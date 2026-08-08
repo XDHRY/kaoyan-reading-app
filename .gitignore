@@ -45,3 +45,4 @@ coverage/
 
 # 快照解压产物(由 db/dump.tar.gz 解出,运行时资产,勿提交)
 db/dump_parts/
+__pycache__/

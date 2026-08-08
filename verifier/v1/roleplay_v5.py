@@ -5,11 +5,16 @@
 - 阿筱（移动端习惯的普通用户）：登录 → 历史档案 → 词汇本 → 个人中心改字号偏好(本地) → 统计页 → 误操作边界（非法输入）
 - 站长 admin：发公告 → 普通用户看到公告 → 撤公告
 """
-import sys, time, json
-sys.path.insert(0, "/app/.user/skills/kaoyan-reading-app/scripts")
-from trpc_call import Trpc, TrpcError
+import os
+import sys
+import time
+import json
 
-BASE = "http://localhost:3000"
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from trpc_call import Trpc, TrpcError  # noqa: E402
+
+BASE = os.environ.get("BASE", "http://localhost:3000")
 PASSWORD = "Test#2026v5"
 RQ = ("本测试套件的代号是什么", "v5")
 PASS_N, FAIL_N = 0, 0
@@ -103,7 +108,7 @@ expect_err("阿筱导入坏备份 → 400", lambda: ax.mutation("export.importBa
 
 # ═════════ 站长 admin ═════════
 print("\n══ 站长 admin 治理 ══")
-adm = Trpc(token=Trpc().mutation("auth.login", {"name": "admin", "password": "KyAdmin#2026!"})["token"])
+adm = Trpc(token=Trpc().mutation("auth.login", {"name": "admin", "password": os.environ.get("ADMIN_PASSWORD", "KyAdmin#2026!")})["token"])
 ann = f"【测试公告】v5 验收巡检 {int(time.time())}"
 adm.mutation("admin.setSetting", {"k": "announcement", "v": ann})
 info2 = Trpc().query("auth.siteInfo")
