@@ -27,14 +27,36 @@ function assertSafeBaseUrl(url: string) {
     throw new Error("渠道地址不是合法 URL");
   }
   if (u.protocol !== "https:") throw new Error("渠道地址必须使用 https（防明文泄钥）");
-  const h = u.hostname.toLowerCase();
-  if (
-    h === "localhost" || h.endsWith(".local") || h.endsWith(".internal") ||
-    /^(127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(h) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(h) || h === "::1" || h.startsWith("fe80:")
-  ) {
+  // 去掉 IPv6 方括号与 FQDN 尾点，防止 [::1]/[::ffff:127.0.0.1]/localhost. 等形态绕过
+  const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  if (!h) throw new Error("渠道地址缺少主机名");
+  const isInternalIpv4 = (v4: string) =>
+    /^(127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(v4) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(v4);
+  const block = () => {
     throw new Error("渠道地址不允许指向内网或回环地址");
+  };
+  if (h.includes(":")) {
+    // IPv6：回环 / 链路本地(fe80::/10)直接拦截
+    if (h === "::1" || /^fe[89ab]/.test(h)) block();
+    // IPv4 映射段(::ffff:127.0.0.1 或规范化为 hex 的 ::ffff:7f00:1)取出内嵌 IPv4 再判
+    const mapped = h.match(/^::ffff:(.+)$/);
+    if (mapped) {
+      let v4: string | null = null;
+      const tail = mapped[1];
+      if (/^\d+\.\d+\.\d+\.\d+$/.test(tail)) {
+        v4 = tail;
+      } else {
+        const hex = tail.split(":").map((p) => p.padStart(4, "0")).join("");
+        if (/^[0-9a-f]{8}$/.test(hex)) {
+          v4 = [0, 2, 4, 6].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(".");
+        }
+      }
+      if (v4 && isInternalIpv4(v4)) block();
+    }
+    return;
   }
+  if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal") || isInternalIpv4(h)) block();
 }
 
 /** 渠道管理权限：管理员可管一切；普通用户只能管自己的个人渠道 */
