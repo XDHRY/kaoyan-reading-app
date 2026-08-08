@@ -1,0 +1,47 @@
+# 纸上功夫(考研传统阅读助手)——CI 工作流
+# 职责:每次推送/PR 时执行 安装依赖 → 类型检查 → Lint → 构建,保证代码可编译、可通过基础门禁。
+# 说明:LLM 相关验收套件需要真实渠道与测试环境(仓库外 /mnt/agents/tmp_tests/),不在本 CI 内执行;
+#       本地完整验收流程见 verifier/README.md 与 docs/部署指南.md。
+
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  build:
+    name: 安装·类型检查·Lint·构建
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20]
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查(tsc)
+        run: npm run check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: 构建(前端 + 后端)
+        run: npm run build
+
+      - name: 产物冒烟(自举三件套资产就位)
+        run: |
+          test -f dist/boot.js && echo "dist/boot.js OK"
+          test -f db/final_corpus.json && echo "真题语料 OK"
+          test -f db/migrations/meta/_journal.json && echo "迁移 meta OK"
