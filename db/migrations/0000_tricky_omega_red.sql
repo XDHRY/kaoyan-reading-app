@@ -188,7 +188,7 @@ CREATE TABLE `vocab_items` (
 	`context` text,
 	`passage_id` bigint unsigned,
 	`familiarity` int NOT NULL DEFAULT 0,
-	`image` text,
+	`image` longtext,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `vocab_items_id` PRIMARY KEY(`id`),
 	CONSTRAINT `uq_vocab_user_word` UNIQUE(`user_id`,`word`)

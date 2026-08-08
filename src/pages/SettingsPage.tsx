@@ -16,8 +16,6 @@ function systemTheme(): "light" | "dark" {
   }
 }
 
-const EFFORTS = ["none", "low", "medium", "high", "xhigh", "max"] as const;
-
 function BindingsPanel() {
   const utils = trpc.useUtils();
   const { user } = useUser();
@@ -419,8 +417,8 @@ function ExportPanel() {
         <div className="mt-4 border-2 border-[var(--ink)] rounded-[2px] p-4 bg-[var(--paper-deep)]/40">
           <p className="text-[13.5px] font-bold">恢复预览（{importPreview.strategy === "skip" ? "遇重跳过" : "遇重覆盖"}）</p>
           <p className="text-[13px] text-[var(--ink-2)] mt-2">
-            生词：新增 {importPreview.report.vocab.add} · 跳过 {importPreview.report.vocab.skip}　
-            素材：新增 {importPreview.report.materials.add} · 跳过 {importPreview.report.materials.skip}　
+            生词：新增 {importPreview.report.vocab.add} · 跳过 {importPreview.report.vocab.skip}
+            素材：新增 {importPreview.report.materials.add} · 跳过 {importPreview.report.materials.skip}
             感悟：新增 {importPreview.report.insights.add}
           </p>
           <p className="text-[12px] text-[var(--ink-3)] mt-1">练习记录/错题等历史档案只读不回灌，避免覆盖现有进度。</p>

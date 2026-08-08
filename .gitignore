@@ -42,3 +42,6 @@ coverage/
 .nyc_output/
 
 # 数据库快照以 Release 附件分发（体积 88MB，超出 git 文本仓库合理载荷）
+
+# 快照解压产物(由 db/dump.tar.gz 解出,运行时资产,勿提交)
+db/dump_parts/

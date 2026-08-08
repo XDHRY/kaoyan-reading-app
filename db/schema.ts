@@ -11,6 +11,7 @@ import {
   json,
   uniqueIndex,
   mediumtext,
+  longtext,
   index,
 } from "drizzle-orm/mysql-core";
 
@@ -315,8 +316,8 @@ export const vocabItems = mysqlTable(
     passageId: bigint("passage_id", { mode: "number", unsigned: true }),
     /** 熟悉度：0 生 / 1 熟 / 2 会了 */
     familiarity: int("familiarity").notNull().default(0),
-    /** AI 记忆配图（dataURL，缓存） */
-    image: text("image"),
+    /** AI 记忆配图（dataURL，缓存；base64 可能达数 MB，用 LONGTEXT 存储） */
+    image: longtext("image"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [uniqueIndex("uq_vocab_user_word").on(t.userId, t.word)],

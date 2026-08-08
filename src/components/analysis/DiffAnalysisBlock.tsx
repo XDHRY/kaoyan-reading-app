@@ -64,10 +64,10 @@ export function DiffAnalysisBlock({ kind, refId, qNo, aiAnswer, officialAnswer, 
             {diff.modelUsed && <span className="text-[11px] text-[var(--ink-3)] ml-2">{diff.modelUsed}</span>}
           </p>
           {diff.aiReasoning && (
-            <p className="leading-relaxed"><b className="text-[var(--ink-2)]">AI 思路复盘　</b><span className="text-[var(--ink-2)]">{diff.aiReasoning}</span></p>
+            <p className="leading-relaxed"><b className="text-[var(--ink-2)]">AI 思路复盘</b><span className="text-[var(--ink-2)]">{diff.aiReasoning}</span></p>
           )}
           {diff.officialLogic && (
-            <p className="leading-relaxed"><b className="text-[var(--bamboo)]">官方逻辑　</b><span className="text-[var(--ink-2)]">{diff.officialLogic}</span></p>
+            <p className="leading-relaxed"><b className="text-[var(--bamboo)]">官方逻辑</b><span className="text-[var(--ink-2)]">{diff.officialLogic}</span></p>
           )}
           {diff.userTakeaway && (
             <p className="leading-relaxed font-bold text-[var(--vermilion)]">裁决检查点：{diff.userTakeaway}</p>

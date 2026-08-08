@@ -56,7 +56,6 @@ export default function InteractivePage() {
   useEffect(() => {
     const saved = (() => { try { return JSON.parse(safeStorage.get(sessKey) ?? "{}"); } catch { return {}; } })();
     setSess({ ...EMPTY, ...saved });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessKey]);
   useEffect(() => { safeStorage.set(sessKey, JSON.stringify(sess)); }, [sessKey, sess]);
 

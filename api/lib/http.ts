@@ -1,7 +1,9 @@
-interface RequestConfig extends RequestInit {
+interface RequestConfig extends Omit<RequestInit, "body"> {
   baseUrl?: string;
   params?: Record<string, string | number>;
   timeout?: number;
+  /** 任意可 JSON 序列化载荷；request 内统一 JSON.stringify 后发出 */
+  body?: unknown;
 }
 
 export class HttpClient {
@@ -55,8 +57,8 @@ export class HttpClient {
       }
 
       return (await response.json()) as T;
-    } catch (error: any) {
-      if (error.name === "AbortError") {
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
         throw new Error("Request timeout");
       }
       throw error;
@@ -71,7 +73,7 @@ export class HttpClient {
     return this.request<T>(url, { ...config, method: "GET", params });
   }
 
-  post<T>(url: string, body?: any, config?: RequestConfig) {
+  post<T>(url: string, body?: unknown, config?: RequestConfig) {
     return this.request<T>(url, { ...config, method: "POST", body });
   }
 }
