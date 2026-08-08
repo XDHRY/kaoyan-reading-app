@@ -97,7 +97,7 @@
 
 ## v5.10 — 2026-08-08（GitHub 交付 · 时区/构建门禁/快照还原 18 处缺陷修复）
 
-对应验收：`verifier/v1/test_v5_api.py`（A 组 22 项 + B 组判分/任务生命周期/僵尸识别/SSRF 全过）、`verifier/v1/verify_extra.py` 补充验收 40/40、前端冒烟全路由 200、CI（tsc + lint + build + 产物冒烟）全绿。
+对应验收：`verifier/runs/20260808_v510.md`（含经验总结与回退指引）
 
 - **时区根治（重大）**：drizzle `planetscale` 模式下 TIMESTAMP 按 UTC 解析，会话时区为 +8 的实例会整体偏大 8 小时，导致**僵尸任务心跳判定失效、永不识别**。修复：mysql2 连接显式 `timezone:"Z"`，并要求 MySQL 实例以 UTC 启动（`docker-compose.yml` 与 `docs/部署指南.md` 同步）。
 - **依赖镜像源修复**：`package-lock.json` 258 处失效镜像 `npm.mirrors.msh.team` 全部改回官方 `registry.npmjs.org`（否则 `npm ci` 无限重试）。
