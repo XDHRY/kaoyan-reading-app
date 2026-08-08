@@ -1,0 +1,446 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============ 水墨国风 · 设计 token ============ */
+:root {
+  /* 色 */
+  --paper: #f6f2e8;
+  --paper-deep: #efe9db;
+  --ink: #101010;
+  --ink-2: #3d3a34;
+  --ink-3: #8a8478;
+  --line: #ddd5c3;
+  --vermilion: #c0392b;
+  --vermilion-deep: #9c2b20;
+  --bamboo: #6b7f5e;
+  /* 字 */
+  --font-zh: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --font-en: Georgia, "Noto Serif SC", serif;
+  --font-mono: "Courier New", monospace;
+  --font-brush: "Zhi Mang Xing", "Noto Serif SC", serif;
+  /* 动 */
+  --ease-ink: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-zh);
+  font-size: 17px;
+  line-height: 1.9;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 纸纹（代码绘制，零外链） */
+.paper-grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.52 0 0 0 0 0.46 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ============ 墨色晕染入场 ============ */
+@keyframes ink-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+.ink-in {
+  animation: ink-in 0.7s var(--ease-ink) both;
+}
+
+/* 印章落章 */
+@keyframes seal-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.5) rotate(var(--seal-rot, 18deg));
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.94) rotate(var(--seal-rot, 18deg));
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(var(--seal-rot, 18deg));
+  }
+}
+.seal-stamp {
+  animation: seal-stamp 0.45s var(--ease-ink) both;
+}
+
+/* 墨线生长 */
+@keyframes ink-line {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.ink-line-draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: ink-line 1.6s var(--ease-ink) forwards;
+}
+
+/* ============ 组件语言 ============ */
+/* 双线框（线装书框） */
+.book-frame {
+  border: 1px solid var(--ink-2);
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 4px var(--line);
+}
+/* 硬偏移印刷影 */
+.print-shadow {
+  box-shadow: 2px 2px 0 rgba(16, 16, 16, 0.55);
+}
+/* 发丝分隔 */
+.hairline-b {
+  border-bottom: 1px solid var(--line);
+}
+.hairline-r {
+  border-right: 1px solid var(--line);
+}
+
+/* 元信息标签：打字机质感 */
+.meta-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* 竖排题字 */
+.vertical-rl {
+  writing-mode: vertical-rl;
+  letter-spacing: 0.35em;
+}
+
+/* 英文阅读正文：大字宽松 */
+.reading-en {
+  font-family: var(--font-en);
+  font-size: 19px;
+  line-height: 2.05;
+  color: var(--ink);
+}
+.reading-en p + p {
+  margin-top: 1.4em;
+}
+
+/* 段号朱砂批注 */
+.para-no {
+  font-family: var(--font-mono);
+  color: var(--vermilion);
+  font-size: 13px;
+  margin-right: 0.75em;
+  user-select: none;
+}
+
+/* ============ v5.1：水墨英雄图（AI 生成，本地资产，零外链） ============ */
+.ink-hero-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  /* 四边渐隐融入纸底，不留矩形边界 */
+  -webkit-mask-image: radial-gradient(ellipse 90% 85% at 60% 40%, #000 45%, transparent 78%);
+  mask-image: radial-gradient(ellipse 90% 85% at 60% 40%, #000 45%, transparent 78%);
+}
+html[data-theme="dark"] .ink-hero-art {
+  opacity: 0.22;
+  mix-blend-mode: screen;
+  filter: grayscale(0.3) brightness(0.9);
+}
+
+/* ============ v5.1：导航笔意下划线（hover/active 生长） ============ */
+.brush-link {
+  position: relative;
+}
+.brush-link::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 0;
+  height: 2px;
+  background: var(--vermilion);
+  transform: translateX(-50%);
+  transition: width 0.3s var(--ease-ink);
+}
+.brush-link:hover::after,
+.brush-link.brush-active::after {
+  width: 70%;
+}
+
+/* ============ v5.1：列表错落入场（最多 8 项，避免长列表拖沓） ============ */
+.ink-stagger > * {
+  animation: ink-in 0.55s var(--ease-ink) both;
+}
+.ink-stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.ink-stagger > *:nth-child(2) { animation-delay: 0.07s; }
+.ink-stagger > *:nth-child(3) { animation-delay: 0.12s; }
+.ink-stagger > *:nth-child(4) { animation-delay: 0.17s; }
+.ink-stagger > *:nth-child(5) { animation-delay: 0.22s; }
+.ink-stagger > *:nth-child(6) { animation-delay: 0.27s; }
+.ink-stagger > *:nth-child(7) { animation-delay: 0.32s; }
+.ink-stagger > *:nth-child(n+8) { animation-delay: 0.37s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-stagger > * {
+    animation: none !important;
+  }
+  .brush-link::after {
+    transition: none;
+  }
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--paper-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ink-3);
+  border: 3px solid var(--paper-deep);
+  border-radius: 5px;
+}
+
+/* 选中效果：朱砂底 */
+::selection {
+  background: rgba(192, 57, 43, 0.22);
+}
+
+/* 无障碍：减少动效 */
+@media (prefers-reduced-motion: reduce) {
+  .ink-in,
+  .seal-stamp,
+  .ink-line-draw {
+    animation: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* 窄屏降噪：印章不玩落章旋转（截图与滚屏时的飘移感），直接安静呈现 */
+@media (max-width: 767.98px) {
+  .seal-stamp {
+    animation: none !important;
+  }
+}
+
+/* ============ v2：三档字号（整体缩放） ============
+   zoom 作用于 html（标准行为：Chromium/Safari/FF≥126）；
+   老 Firefox（<126 不支持 zoom）回退 transform:scale + 宽度补偿，两条分支互斥不叠加。 */
+html[data-fontscale="large"] { zoom: 1.12; }
+html[data-fontscale="xlarge"] { zoom: 1.25; }
+@supports not (zoom: 1) {
+  html[data-fontscale="large"] body {
+    transform: scale(1.12);
+    transform-origin: top left;
+    width: 89.3%;
+  }
+  html[data-fontscale="xlarge"] body {
+    transform: scale(1.25);
+    transform-origin: top left;
+    width: 80%;
+  }
+}
+
+/* ============ 深色模式（CSS 变量覆盖） ============ */
+html[data-theme="dark"] {
+  --paper: #1a1917;
+  --paper-deep: #242220;
+  --ink: #e8e4dc;
+  --ink-2: #b8b2a6;
+  --ink-3: #7a756b;
+  --line: #3a3733;
+  --vermilion: #e05a4a;
+  --vermilion-deep: #c0392b;
+  --bamboo: #7fa06f;
+}
+html[data-theme="dark"] .paper-grain::before {
+  opacity: 0.25;
+  mix-blend-mode: screen;
+}
+
+/* ============ ink-card 通用卡片（两页面引用了它，补上定义） ============ */
+.ink-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 20px;
+}
+
+/* ============ 安全区（刘海屏/全面屏手势条） ============ */
+.safe-bottom {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+.safe-bottom-bar {
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* ============ 沉浸模式：隐去顶栏 / 底栏 / 页脚，只留正文 ============ */
+html[data-immersive="1"] body > #root > div > header,
+html[data-immersive="1"] body > #root > div > footer,
+html[data-immersive="1"] body > #root > div > nav.md\\:hidden {
+  display: none !important;
+}
+html[data-immersive="1"] main {
+  padding-top: 1.5rem !important;
+}
+
+/* ============ 打印样式：只留文章/解析正文，隐藏交互 ============ */
+@media print {
+  header, nav, aside, footer, button, .no-print, .paper-grain::before {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    font-size: 12pt;
+    line-height: 1.8;
+  }
+  html[data-fontscale="large"], html[data-fontscale="xlarge"] { zoom: 1; }
+}
+
+/* ============ v2：点词查词 ============ */
+.word-token {
+  border-radius: 3px;
+  padding: 0 1px;
+  margin: 0 -1px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.word-token:hover {
+  background: rgba(192, 57, 43, 0.14);
+  box-shadow: 0 1px 0 var(--vermilion);
+}
+.word-token.in-book {
+  background: rgba(107, 127, 94, 0.14);
+  box-shadow: 0 1px 0 var(--bamboo);
+}
+
+/* 查词气泡 */
+.vocab-pop {
+  position: absolute;
+  z-index: 70;
+  width: 300px;
+  background: var(--paper);
+  border: 1px solid var(--ink-2);
+  box-shadow: 3px 3px 0 rgba(16, 16, 16, 0.85);
+  padding: 14px 16px;
+  border-radius: 2px;
+  animation: ink-in 0.25s var(--ease-ink) both;
+}
+.vocab-pop .pop-word {
+  font-family: Georgia, serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ============ v2：学习日历热力图 ============ */
+.heatmap {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 3px;
+}
+.heatmap .cell {
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--paper-deep);
+  border: 1px solid rgba(16, 16, 16, 0.06);
+}
+.heatmap .cell.l1 { background: #d9d2ba; }
+.heatmap .cell.l2 { background: #b3ac86; }
+.heatmap .cell.l3 { background: #6b7f5e; }
+.heatmap .cell.l4 { background: #3f5238; }
+
+/* ============ v2：新手引导气泡 ============ */
+.tour-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(16, 16, 16, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tour-card {
+  max-width: 460px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 4px 4px 0 rgba(16, 16, 16, 0.85);
+  padding: 26px 28px;
+  animation: ink-in 0.4s var(--ease-ink) both;
+}
+
+/* 弹窗（模型管理器等） */
+.ink-modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(16, 16, 16, 0.5);
+  overflow-y: auto;
+  padding: 4vh 16px 8vh;
+}
+.ink-modal {
+  max-width: 880px;
+  margin: 0 auto;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 5px 5px 0 rgba(16, 16, 16, 0.85);
+  animation: ink-in 0.35s var(--ease-ink) both;
+}
+
+/* 表单控件统一 */
+.ink-input,
+.ink-select,
+.ink-textarea {
+  width: 100%;
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+}
+.ink-input:focus,
+.ink-select:focus,
+.ink-textarea:focus {
+  border-color: var(--ink-2);
+  box-shadow: 2px 2px 0 rgba(16, 16, 16, 0.2);
+}
+.ink-label {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--ink-3);
+  margin-bottom: 4px;
+  font-family: "Courier New", monospace;
+}

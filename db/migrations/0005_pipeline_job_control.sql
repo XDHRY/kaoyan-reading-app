@@ -1,0 +1,2 @@
+ALTER TABLE `pipeline_jobs` MODIFY COLUMN `status` enum('running','paused','done','error','cancelled') NOT NULL DEFAULT 'running';--> statement-breakpoint
+ALTER TABLE `announcements` ADD `digest` text;
