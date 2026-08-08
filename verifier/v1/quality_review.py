@@ -88,8 +88,8 @@ def main():
     # 查段落数（供结构覆盖检查）
     if kind == "exam":
         try:
-            ps = call("content.detail", {"id": ref}, method="GET")
-            para_count = len(ps.get("paragraphs", [])) if ps else 0
+            ps = call("passage.detail", {"id": ref}, method="GET")
+            para_count = len(ps.get("passage", {}).get("paragraphs", [])) if ps else 0
         except Exception:
             para_count = 0
     else:
@@ -132,8 +132,10 @@ def main():
         print(f" {mark} {item}" + (f" — {note}" if note and not ok else ""))
     print(f"\n总评：{passed}/{total}" + ("  全部达标 🎉" if passed == total else ""))
     # 导出完整产物供人工品读
-    with open(f"/tmp/quality_{kind}_{ref}.json", "w") as f:
+    import os
+    out = os.path.join(os.environ.get("TEMP", "."), f"quality_{kind}_{ref}.json")
+    with open(out, "w", encoding="utf-8") as f:
         json.dump(p, f, ensure_ascii=False, indent=1)
-    print(f"完整产物已存 /tmp/quality_{kind}_{ref}.json")
+    print(f"完整产物已存 {out}")
 
 main()
