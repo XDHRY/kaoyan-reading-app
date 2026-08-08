@@ -37,6 +37,7 @@ dist-ssr
 # Build outputs
 dist/
 build/
+release/
 # Test coverage
 coverage/
 .nyc_output/
