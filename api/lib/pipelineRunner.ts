@@ -21,8 +21,10 @@ const STAGE_ORDER = ["structure", "question", "locate", "solve", "crosscheck"];
 
 /** 用户控制信号：暂停/停止（执行器在阶段检查点识别后安静退出，产物已落库不丢） */
 class ControlSignal extends Error {
-  constructor(public control: "paused" | "cancelled") {
+  control: "paused" | "cancelled";
+  constructor(control: "paused" | "cancelled") {
     super(control);
+    this.control = control;
     this.name = "ControlSignal";
   }
 }
@@ -189,7 +191,6 @@ export async function runPipelineJob(jobId: number): Promise<void> {
           (await promptOf("agent_reviewer", FALLBACK_PROMPTS.agent_reviewer, uid)) +
           (await buildMethodContext("agent_reviewer"));
         const locateArr = (payload.locate ?? []) as Record<string, unknown>[];
-        const locateCtx = buildLocateContext(content.paragraphs, locateArr);
         const qaArr = (payload.qAnalysis ?? []) as Record<string, unknown>[];
 
         // —— 解题官：逐题调用（根治"解题阶段卡 10 分钟"——5 题一次出曾要 6-8 分钟推理+巨量输出；

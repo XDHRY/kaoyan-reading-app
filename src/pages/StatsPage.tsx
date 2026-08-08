@@ -240,7 +240,7 @@ function SourceCard({ title, enLabel, seal, s }: { title: string; enLabel: strin
                 .sort((a, b) => b.total - a.total)
                 .map((t) => (
                   <div key={t.qType} className="flex items-center gap-2 text-[12.5px]">
-                    <span className="w-16 shrink-0">{typeZh.get(t.qType) ?? t.qType}</span>
+                    <span className="w-16 shrink-0">{typeZh.get(t.qType as (typeof Q_TYPES)[number]["id"]) ?? t.qType}</span>
                     <span className="flex-1 h-2 bg-[var(--paper-deep)] rounded-[1px] overflow-hidden">
                       <span
                         className="block h-full"

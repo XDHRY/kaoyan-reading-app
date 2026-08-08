@@ -119,7 +119,6 @@ export default function PracticePage() {
       setDraftHint(`已恢复 ${mins} 分钟前的答题进度（${Object.keys(d.answers).length} 题）`);
       setTimeout(() => setDraftHint(""), 6000);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey]);
   const doneForDraft = result !== null;
   useEffect(() => {

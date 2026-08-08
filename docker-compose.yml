@@ -13,7 +13,7 @@ services:
       MYSQL_DATABASE: kaoyan
       MYSQL_USER: kaoyan
       MYSQL_PASSWORD: kaoyan_pass_change_me
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone='+00:00'
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:

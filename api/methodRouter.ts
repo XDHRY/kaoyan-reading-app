@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { createRouter, publicQuery, privateQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { methodClauses, sentenceAnalyses, analyses } from "@db/schema";
@@ -120,7 +120,7 @@ export const methodRouter = createRouter({
       const uid = ctx.user?.id;
 
       // 第一层：精确提炼视觉素材（元素 + 关系），按篇章缓存
-      let meta = await db.query.analyses.findFirst({
+      const meta = await db.query.analyses.findFirst({
         where: and(
           eq(analyses.source, input.kind),
           eq(analyses.passageId, input.refId),

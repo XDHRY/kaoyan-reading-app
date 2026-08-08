@@ -6,12 +6,24 @@ const dir = "db/dump_parts";
 const files = fs.readdirSync(dir).filter((f) => f.startsWith("part_") && f.endsWith(".json")).sort();
 const c = await mysql.createConnection({ uri: process.env.DATABASE_URL });
 await c.query("SET FOREIGN_KEY_CHECKS=0");
+// 表列缓存：以 SHOW COLUMNS 为准，对齐 dump 与 schema 的列差异（跳过已废弃列），
+// 使旧快照能在新 schema 上安全追加导入
+const colCache = new Map();
+async function tableCols(tb) {
+  if (!colCache.has(tb)) {
+    const [cols] = await c.query(`SHOW COLUMNS FROM \`${tb}\``);
+    colCache.set(tb, new Set(cols.map((x) => x.Field)));
+  }
+  return colCache.get(tb);
+}
 let total = 0;
 for (const f of files) {
   const dump = JSON.parse(fs.readFileSync(`${dir}/${f}`, "utf8"));
   for (const [tb, rows] of Object.entries(dump)) {
     if (!rows.length) continue;
-    const cols = Object.keys(rows[0]);
+    const valid = await tableCols(tb);
+    const cols = Object.keys(rows[0]).filter((k) => valid.has(k));
+    if (!cols.length) continue; // 表已无任何可用列，跳过整表
     const colList = cols.map((x) => "`" + x + "`").join(",");
     for (let i = 0; i < rows.length; i += 200) {
       const batch = rows.slice(i, i + 200);

@@ -129,7 +129,12 @@ async function callOpenAi(
     },
     body: JSON.stringify(body),
   }, channel);
-  const data: any = await res.json().catch(() => ({}));
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: { message?: string };
+    choices?: { message?: { content?: string } }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+    model?: string;
+  };
   if (!res.ok) {
     throw new Error(`OpenAI 协议调用失败 (${res.status}): ${data?.error?.message ?? JSON.stringify(data).slice(0, 300)}`);
   }
@@ -183,7 +188,12 @@ async function callAnthropic(
     },
     body: JSON.stringify(body),
   }, channel);
-  const data: any = await res.json().catch(() => ({}));
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: { message?: string };
+    content?: { type: string; text: string }[];
+    usage?: { input_tokens?: number; output_tokens?: number };
+    model?: string;
+  };
   if (!res.ok) {
     throw new Error(`Anthropic 协议调用失败 (${res.status}): ${data?.error?.message ?? JSON.stringify(data).slice(0, 300)}`);
   }
@@ -225,7 +235,10 @@ export async function callImage(
       ...(opts.quality ? { quality: opts.quality } : {}),
     }),
   }, channel);
-  const data: any = await res.json().catch(() => ({}));
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: { message?: string };
+    data?: { b64_json?: string; url?: string }[];
+  };
   if (!res.ok) {
     throw new Error(`绘图调用失败 (${res.status}): ${data?.error?.message ?? JSON.stringify(data).slice(0, 300)}`);
   }
@@ -248,7 +261,10 @@ export async function listModels(channel: Pick<Channel, "baseUrl" | "apiKey" | "
   } finally {
     clearTimeout(timer);
   }
-  const data: any = await res.json().catch(() => ({}));
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: { message?: string };
+    data?: { id?: string }[];
+  };
   if (!res.ok) {
     throw new Error(`拉取模型列表失败 (${res.status}): ${data?.error?.message ?? res.statusText}`);
   }

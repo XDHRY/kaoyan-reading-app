@@ -30,6 +30,7 @@ export function ModelSwitcher() {
   useEffect(() => {
     if (chatBinding) setChatSel(`${chatBinding.channelId}::${chatBinding.model}`);
     if (imageBinding) setImageSel(`${imageBinding.channelId}::${imageBinding.model}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 刻意只依赖字段：binding 对象引用每次查询都变，整对象入依赖会导致选择框无谓重置
   }, [chatBinding?.channelId, chatBinding?.model, imageBinding?.channelId, imageBinding?.model]);
 
   const pick = (value: string, role: string) => {

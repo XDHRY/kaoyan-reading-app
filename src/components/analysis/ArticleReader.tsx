@@ -108,7 +108,7 @@ export function ArticleReader({ paragraphs, kind, refId, vocabPassageId, headerL
     const hostRect = host.getBoundingClientRect();
     const bw = el.offsetWidth;
     const bh = el.offsetHeight;
-    let x = Math.max(4, Math.min(pop.x, hostRect.width - bw - 4));
+    const x = Math.max(4, Math.min(pop.x, hostRect.width - bw - 4));
     let y = pop.y;
     if (y + bh > hostRect.height - 4) {
       y = Math.max(4, pop.y - bh - 28); // 上翻到点击位置上方
