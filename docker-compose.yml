@@ -1,44 +1,75 @@
 # 纸上功夫(考研传统阅读助手)——Docker Compose 编排
-# 用法:cp .env.example .env(填 APP_ID / APP_SECRET / ADMIN_PASSWORD)
+# 用法:cp .env.example .env(必填 ADMIN_PASSWORD,生产建议改 APP_SECRET 与数据库口令)
 #       docker compose up -d --build
-# 说明:compose 会自动读取同目录 .env 作为变量来源;DATABASE_URL 在下方已指向
-#       compose 内的 mysql 服务(生产请修改为独立数据库并妥善保管口令)。
+# 云服务器一键部署(推荐):deploy/cloud-init.sh 交互式生成 .env 并自动构建启动。
+# 说明:compose 自动读取同目录 .env 作为变量来源;口令/端口均从 .env 读取并带安全默认值。
+# 数据恢复(仅空库):cd 项目目录 && tar -xzf db/dump.tar.gz && docker compose --profile restore run --rm restore
+
 services:
   mysql:
     image: mysql:8.0
-    container_name: kaoyan-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root_pass_change_me
-      MYSQL_DATABASE: kaoyan
-      MYSQL_USER: kaoyan
-      MYSQL_PASSWORD: kaoyan_pass_change_me
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_pass_change_me}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-kaoyan_reading}
+      MYSQL_USER: ${MYSQL_USER:-kaoyan}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-kaoyan_pass_change_me}
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone='+00:00'
+    ports:
+      - "${DB_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-proot_pass_change_me"]
+      # $$ 在 compose 解析时转义为字面 $,交给容器内 shell 展开 MYSQL_ROOT_PASSWORD
+      # (exec 形式无 shell,故用 CMD-SHELL)
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD"]
       interval: 5s
       timeout: 5s
       retries: 30
       start_period: 30s
 
   app:
+    image: kaoyan-reading-app:latest
     build: .
-    container_name: kaoyan-app
     restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
     environment:
-      # 与上面 mysql 服务的账号口令保持一致
-      DATABASE_URL: mysql://kaoyan:kaoyan_pass_change_me@mysql:3306/kaoyan
+      # DATABASE_URL 缺省指向 compose 内的 mysql 服务;若改了 MYSQL_PASSWORD / 库名必须同步这里
+      DATABASE_URL: ${DATABASE_URL:-mysql://kaoyan:kaoyan_pass_change_me@mysql:3306/kaoyan_reading}
       APP_ID: ${APP_ID:-kaoyan-default-app}
       APP_SECRET: ${APP_SECRET:-please_set_a_random_secret}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
       PORT: "3000"
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      # node:20-slim 无 curl,用内置 fetch 探活;boot.ts 先起监听再异步自举,
+      # start_period 给足 60s 覆盖「迁移 + 种子 + 管理员创建」窗口
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/trpc/ping').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+
+  # 一次性数据恢复服务(profile: restore,默认 docker compose up 不启动):
+  # 追加模式导入 db/dump_parts(由 db/dump.tar.gz 解出,宿主机挂载),只对空库执行。
+  # 用法:docker compose --profile restore run --rm restore
+  restore:
+    image: kaoyan-reading-app:latest
+    build: .
+    profiles: ["restore"]
+    restart: "no"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-mysql://kaoyan:kaoyan_pass_change_me@mysql:3306/kaoyan_reading}
+    volumes:
+      - ./db/dump_parts:/app/db/dump_parts:ro
+    command: ["node", "scripts_restore_dump.mjs"]
 
 volumes:
   mysql-data:
