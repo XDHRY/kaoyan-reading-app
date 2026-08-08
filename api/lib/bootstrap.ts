@@ -7,6 +7,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "../queries/connection";
@@ -19,7 +20,15 @@ import { seedCorpus } from "@db/seedCorpus";
 async function ensureSchema() {
   // migrate 幂等（__drizzle_migrations 记录已应用项）：每次启动都跑，
   // 让新版本的新表/新列自动进入老部署库——"部署即自愈"的基石。
-  const folder = path.resolve(process.cwd(), "db", "migrations");
+  // 迁移目录跟随本模块所在位置解析（打包后为 app.asar 内 db/migrations，
+  // 开发时为项目根 db/migrations），不依赖 process.cwd()——桌面壳以任意
+  // cwd 拉起 boot.js 都能找到迁移文件。
+  const folder = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "db",
+    "migrations",
+  );
   console.log(`[bootstrap] 执行迁移（已应用自动跳过）：${folder}`);
 
   // 基线自愈：老库若是 db:push 时代建的（journal 为空但核心表已存在），

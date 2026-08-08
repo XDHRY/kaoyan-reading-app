@@ -2,13 +2,17 @@
   "name": "my-app",
   "private": true,
   "version": "5.11.0",
+  "description": "考研传统阅读助手：六步 SOP 精读真题",
+  "author": "XDHRY",
   "type": "module",
+  "main": "desktop/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build && esbuild api/boot.ts --platform=node --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\"",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "NODE_ENV=production node dist/boot.js",
+    "dist:win": "npm run build && electron-builder --win",
     "check": "tsc -b",
     "format": "prettier --write .",
     "test": "vitest run",
@@ -17,6 +21,9 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "@hono/node-server": "^1.14.3",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -83,6 +90,8 @@
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.23",
     "drizzle-kit": "^0.31.8",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.27.2",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
@@ -98,5 +107,31 @@
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
     "vitest": "^4.0.16"
+  },
+  "build": {
+    "appId": "com.xdhry.kaoyanreading",
+    "productName": "考研阅读助手",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "desktop/**",
+      "build/icon.*",
+      "db/migrations/**",
+      "db/final_corpus.json",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

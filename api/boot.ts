@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { cors } from "hono/cors";
 import type { HttpBindings } from "@hono/node-server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./router";
@@ -7,6 +8,40 @@ import { createContext } from "./context";
 import { env } from "./lib/env";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
+
+/**
+ * CORS 白名单：Web/EXE 走同源相对路径，无 Origin 或同源请求不受影响；
+ * 仅放行 APK 壳（capacitor://localhost）、本机/局域网调试 origin 与 env CORS_ORIGINS 显式配置。
+ */
+function isAllowedOrigin(origin: string): boolean {
+  if (env.corsOrigins.includes(origin)) return true;
+  if (origin === "capacitor://localhost") return true;
+  let u: URL;
+  try {
+    u = new URL(origin);
+  } catch {
+    return false;
+  }
+  const h = u.hostname;
+  if (u.protocol === "http:" || u.protocol === "https:") {
+    if (h === "localhost" || h === "127.0.0.1") return true;
+    // 局域网私有段：http://192.168.*.* / http://10.*.*.*
+    if (u.protocol === "http:" && (h.startsWith("192.168.") || h.startsWith("10."))) return true;
+  }
+  return false;
+}
+
+app.use(
+  "*",
+  cors({
+    origin: (origin) => (origin ? isAllowedOrigin(origin) ? origin : undefined : undefined),
+    allowHeaders: ["Content-Type", "Accept", "x-session-token"],
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    // 会话走 X-Session-Token 头而非 cookie，但前端 fetch 带 credentials:include，保持一致开启
+    credentials: true,
+    maxAge: 86400,
+  }),
+);
 
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
 

@@ -31,9 +31,12 @@ type CorpusItem = {
 
 export async function seedCorpus() {
   const db = getDb();
-  // 兼容源码运行（db/ 目录）与打包后的生产镜像（cwd 为项目根）
+  // 兼容源码运行（db/ 目录）、打包 bundle（dist/）与旧 cwd 约定：
+  // __dirname 在 bundle 中即 boot.js 所在目录，取父级 db/final_corpus.json
+  // 可在打包后（app.asar 内）依然命中，不依赖 process.cwd()。
   const candidates = [
     path.join(__dirname, "final_corpus.json"),
+    path.resolve(__dirname, "..", "db", "final_corpus.json"),
     path.resolve(process.cwd(), "db", "final_corpus.json"),
     path.resolve(process.cwd(), "final_corpus.json"),
   ];

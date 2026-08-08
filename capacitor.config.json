@@ -1,0 +1,8 @@
+{
+  "appId": "com.xdhry.kaoyanreading",
+  "appName": "考研阅读助手",
+  "webDir": "dist/public",
+  "android": {
+    "allowMixedContent": true
+  }
+}

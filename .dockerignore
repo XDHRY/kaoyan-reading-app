@@ -4,3 +4,12 @@ dist
 .env
 *.log
 tmp
+
+# ── 数据快照与解压分片:运行期用不到,restore 时按需宿主机挂载 ──
+db/dump.tar.gz
+db/dump_parts/
+
+# ── 打包与验证产物:不进镜像 ──
+release/
+android/
+verifier/runs/
