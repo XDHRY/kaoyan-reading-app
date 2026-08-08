@@ -14,4 +14,9 @@ export const env = {
   appSecret: process.env.APP_SECRET ?? "",
   isProduction: process.env.NODE_ENV === "production",
   databaseUrl: required("DATABASE_URL"),
+  // CORS 显式白名单（逗号分隔的完整 origin）；缺省时仅用内置白名单（同源不受影响）
+  corsOrigins: (process.env.CORS_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
 };

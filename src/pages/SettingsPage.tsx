@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { BrushTitle, InkReveal, PaperCard, StatusDot } from "@/components/ink/decor";
+import { ServerSettingsCard } from "@/components/ServerConfig";
 import { ModelManager } from "@/components/ModelManager";
 import { BINDING_ROLES } from "@contracts/types";
 import { useUser } from "@/hooks/useUser";
@@ -454,6 +455,7 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <AppearancePanel />
           <ExportPanel />
+          <ServerSettingsCard />
         </div>
       </InkReveal>
 
