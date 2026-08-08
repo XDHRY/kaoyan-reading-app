@@ -48,6 +48,15 @@ docs/               部署与架构文档(本仓库补充)
 8. **真题语料仅供个人学习**,不做公开分发;`.env` 永不打包进镜像。
 9. **验收门禁**:任何改动必须全量回归 + 部署模拟通过才算完成(见 verifier)。
 
+## 编码方法论(PonyTAIL 懒惰阶梯)
+
+项目采用 PonyTAIL 方法论(「最好的代码是没写的代码」)。写代码前按阶梯自问,详见 `docs/开发指南.md` 第四节:
+
+1. 需要存在吗(YAGNI)→ 2. 代码库已有就复用 → 3. 标准库 → 4. 已装依赖 → 5. 一行能写就一行 → 6. 才写最小代码。
+- **Bug 修根因**:grep 所有调用者,在共享函数修一次(如 SSRF 校验只在 `assertSafeBaseUrl` 收口)。
+- 不建多余抽象、删除优先于添加、最短 diff;有意简化处加 `ponytail:` 注释标注天花板与升级路径。
+- 非平凡逻辑留最小可运行自检(verifier/v1 风格,不引框架)。
+
 ## 加一个新模块的标准动作(六步)
 
 1. `db/schema.ts` 加表 → `npx drizzle-kit generate --name xxx`(启动时幂等应用,老部署自愈)。
@@ -79,7 +88,7 @@ npm run db:generate  # drizzle-kit generate(改 schema.ts 后)
 
 - 验收标准:仓库内 `verifier/vN/CRITERIA.md`(追加式,不覆盖)。
 - 执行记录:`verifier/runs/` 每次执行追加带时间戳的记录。
-- 完整测试脚本在开发环境 `/mnt/agents/tmp_tests/`,仓库 `verifier/v1/` 保留基线脚本。
+- 套件清单与运行命令:`docs/测试指南.md`(含 v5.11 新增边界套件 `test_boundary_v6.py` 137 项:认证矩阵 98+15、zod 边界 81、SSRF 22 变体、并发/幂等、数据隔离等)。
 - 每次交付:全量回归 + 干净树部署模拟(git archive → 构建 → 启动 → 健康检查)。
 
 ## 环境依赖

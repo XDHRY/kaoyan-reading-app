@@ -254,7 +254,7 @@ export const analyses = mysqlTable("analyses", {
   payload: json("payload").$type<Record<string, unknown>>().notNull(),
   modelUsed: varchar("model_used", { length: 128 }).notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [index("idx_analyses_source_ref_created").on(t.source, t.passageId, t.createdAt)]);
 export type Analysis = typeof analyses.$inferSelect;
 
 /** AI 生成的新题 */

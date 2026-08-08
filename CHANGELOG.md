@@ -6,6 +6,19 @@
 
 ---
 
+## v5.11 — 2026-08-08（安全加固 · 排序内存修复 · 边界测试 137 项 · 文档体系补全）
+
+对应验收：`verifier/runs/20260808_v511.md`
+
+- **SSRF 防护加固（安全）**：`channelRouter.assertSafeBaseUrl` 拦截 6 类此前可绕过的内网变体——`[::1]`、`[0:0:0:0:0:0:0:1]`、`[::ffff:127.0.0.1]`（及 Node URL 规范化的 hex 映射如 `[::ffff:7f00:1]`）、链路本地 `[fe80::1]`、尾点 `localhost.`；判定逻辑统一为「去方括号 + 去尾点」后再做 IPv6 回环 / `fe[89ab]:` 前缀 / IPv4 映射段（hex 解码）检查。实测 20 种内网变体全拦截、公网（IPv4/IPv6/172.32.0.1）正常放行。
+- **analysisList 排序内存修复（缺陷）**：`ORDER BY created_at` 叠加 SELECT 大 JSON `payload` 列触发 MySQL filesort 溢出，19 行数据即 500「Out of sort memory」。修复：`analyses` 表新增复合索引 `idx_analyses_source_ref_created(source, passageId, createdAt)`（迁移 0006，启动幂等应用）。
+- **边界测试 137 项**：新增 `verifier/v1/test_boundary_v6.py`，9 大域覆盖——A 认证矩阵（98 私有端点游客 401 + 15 管理端点 401/403）、B zod 边界 81 项、C SSRF 22 变体、D 并发/幂等、E 降级/空列表、F 异常输入、G XSS/注入、H 合法边界、I 数据隔离；不触发真实 LLM。
+- **文档体系补全**：新增 `docs/使用手册.md`（使用者功能导览）、`docs/测试指南.md`（套件清单/运行命令/覆盖矩阵/新增断言规范）、`docs/API 概览.md`（全部 tRPC 端点 + 权限等级 + zod 边界表）、`docs/开发指南.md`（环境搭建/构建/迁移/回退 + 编码方法论）；`docs/架构说明.md` 补「安全设计」节；`AGENTS.md` 补「编码方法论（PonyTAIL）」节。
+- **编码方法论落地**：引入 PonyTAIL 懒惰阶梯（YAGNI → 复用 → 标准库 → 最小代码），本轮修复均遵循「最短 diff、修根因」原则。
+- 验收：门禁三绿（tsc/lint/build）+ 全量回归（test_v5_api 76/76、verify_extra 40/40、roleplay 32/32、quality 92/92、流水线全过、边界 137/137）。
+
+---
+
 ## v5.9 — 2026-08-05（解题提速 · 拆句提质 · API 设置一目了然）
 
 对应方案：`verifier/PLAN_v58.md` 用户原话要点；验收记录：`verifier/runs/20260805_v59.md`
