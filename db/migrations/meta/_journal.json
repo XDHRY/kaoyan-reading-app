@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1785454547372,
+      "tag": "0000_tricky_omega_red",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1785686396008,
+      "tag": "0001_quick_nemesis",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1785722394201,
+      "tag": "0002_retro_sets",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1785722662851,
+      "tag": "0003_interactive_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1785728530883,
+      "tag": "0004_tickets_notices",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1785863680068,
+      "tag": "0005_pipeline_job_control",
+      "breakpoints": true
+    }
+  ]
+}
