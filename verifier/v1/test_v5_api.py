@@ -12,17 +12,37 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import time
 import urllib.request
 
-sys.path.insert(0, "/app/.user/skills/kaoyan-reading-app/scripts")
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 from trpc_call import Trpc, TrpcError  # noqa: E402
 
-BASE = "http://localhost:3000"
-APP = "/mnt/agents/output/app"
+BASE = os.environ.get("BASE", "http://localhost:3000")
 PASSWORD = "CHANGE_ME_USER_PASS"
+
+
+def find_app_root() -> str:
+    """探测项目根目录：优先环境变量 APP，否则从本脚本位置向上找含 node_modules 的目录。"""
+    env = os.environ.get("APP")
+    if env and os.path.isdir(env) and os.path.isfile(os.path.join(env, "package.json")):
+        return env
+    d = HERE
+    while True:
+        if os.path.isfile(os.path.join(d, "package.json")) and os.path.isdir(os.path.join(d, "node_modules")):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return HERE
+
+
+APP = find_app_root()
 
 passed: list[str] = []
 failed: list[tuple[str, str]] = []
@@ -70,7 +90,7 @@ def node_db(sql: str) -> str:
 require("dotenv").config();
 const mysql = require("mysql2/promise");
 (async () => {{
-  const c = await mysql.createConnection(process.env.DATABASE_URL + "?ssl={{\\"rejectUnauthorized\\":false}}");
+  const c = await mysql.createConnection({{ uri: process.env.DATABASE_URL, timezone: "Z" }});
   const [rows] = await c.query({json.dumps(sql)});
   console.log(JSON.stringify(rows));
   await c.end();
@@ -85,7 +105,8 @@ const mysql = require("mysql2/promise");
         # dotenv 横幅会污染 stdout，取最后一行 JSON
         return [l for l in out.stdout.strip().splitlines() if l.strip()][-1]
     finally:
-        subprocess.run(["rm", "-f", f"{APP}/_t.cjs"])
+        if os.path.exists(f"{APP}/_t.cjs"):
+            os.remove(f"{APP}/_t.cjs")
 
 
 # ═══════════════════════════ A 认证与访客边界 ═══════════════════════════
@@ -241,7 +262,8 @@ def suite_B(ps):
         P("B9 AI 出题成功（1次LLM）", False, f"{e.status} {e.body[:200]}（渠道不可用时整组降级为失败，需排查）")
 
     # B12 SSRF 守卫（管理员渠道写入）
-    adm = Trpc(token=Trpc().mutation("auth.login", {"name": "admin", "password": "CHANGE_ME_ADMIN_PASS"})["token"])
+    ADMIN_PW = os.environ.get("ADMIN_PASSWORD", "CHANGE_ME_ADMIN_PASS")
+    adm = Trpc(token=Trpc().mutation("auth.login", {"name": "admin", "password": ADMIN_PW})["token"])
     for bad in ["http://127.0.0.1:8080/v1", "http://192.168.1.5", "http://169.254.169.254/latest", "http://localhost:3000", "https://x.internal"]:
         expect_err(
             f"B12 SSRF 拦截 {bad}",

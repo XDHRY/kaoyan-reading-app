@@ -8,12 +8,15 @@ solved 含 reflection / methodRefs 全合法 / saveResult 落库闭环。
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 
-sys.path.insert(0, "/app/.user/skills/kaoyan-reading-app/scripts")
-from trpc_call import Trpc
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from trpc_call import Trpc  # noqa: E402
 
+BASE = os.environ.get("BASE", "http://localhost:3000")
 PASSWORD = "CHANGE_ME_USER_PASS"
 
 

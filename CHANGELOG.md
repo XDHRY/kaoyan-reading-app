@@ -95,7 +95,19 @@
 
 ---
 
+## v5.10 — 2026-08-08（GitHub 交付 · 时区/构建门禁/快照还原 18 处缺陷修复）
+
+对应验收：`verifier/v1/test_v5_api.py`（A 组 22 项 + B 组判分/任务生命周期/僵尸识别/SSRF 全过）、`verifier/v1/verify_extra.py` 补充验收 40/40、前端冒烟全路由 200、CI（tsc + lint + build + 产物冒烟）全绿。
+
+- **时区根治（重大）**：drizzle `planetscale` 模式下 TIMESTAMP 按 UTC 解析，会话时区为 +8 的实例会整体偏大 8 小时，导致**僵尸任务心跳判定失效、永不识别**。修复：mysql2 连接显式 `timezone:"Z"`，并要求 MySQL 实例以 UTC 启动（`docker-compose.yml` 与 `docs/部署指南.md` 同步）。
+- **依赖镜像源修复**：`package-lock.json` 258 处失效镜像 `npm.mirrors.msh.team` 全部改回官方 `registry.npmjs.org`（否则 `npm ci` 无限重试）。
+- **构建门禁清零**：tsc strict（erasableSyntaxOnly/未用变量/类型收窄）与 eslint（行尾全角空格、未用 `eslint-disable` 指令、`any` 窄化）共 17 项问题修复，`npm run check` / `npm run lint` / `npm run build` 三绿。
+- **快照还原加固**：`scripts_restore_dump.mjs` 导入前按 `SHOW COLUMNS` 对齐列，跳过 dump 中废弃列；`vocab_items.image` 由 `text` 改为 `longtext`（TEXT 64KB 存不下 4MB base64 配图）；`.gitignore` 排除 `db/dump_parts/`。
+- **文档与 CI**：`docs/部署指南.md` 补充 MySQL 必须 UTC 时区；`.github/workflows/ci.yml` 就位并在 push 全绿。
+
+---
+
 ## 已知环境依赖
 
-- 验收测试脚本位于 `/mnt/agents/tmp_tests/`（随开发环境），仓库内 `verifier/` 仅保留验收标准与运行记录；完整复现验收需在具备该目录的环境中执行。
+- 验收测试脚本已入库（`verifier/v1/` 起，`trpc_call.py` + `test_v5_api.py` + `verify_extra.py` 等），本地起服务后可直接运行；LLM 依赖用例（B9-B11/C 组）需在「设置 → API 设置」配置真实渠道密钥。历史运行记录见 `verifier/runs/`。
 - 本仓库随附全量数据库快照 `db/dump.tar.gz`（30 张表、2763 行内容数据，渠道 API key 与账号口令已脱敏），用于全新部署还原与回归基线。

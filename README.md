@@ -55,9 +55,15 @@ verifier/           验收标准（v1…vN/CRITERIA.md）+ 运行记录（runs/�
 
 ## 测试
 
-测试脚本在 `/mnt/agents/tmp_tests/`（随环境），trpc_call 助手在技能目录。
-核心套件：`test_v5_api`（76）· `test_v51_api`（35：定制卷/跟我练）· `test_v53_api`（22：工单公告）· `roleplay_v52`（36：三角色遍历）· `smoke_v5/v51/v53/manual`（Playwright 共 73）· `quality_review`（92 量规）。
-每次交付：全量回归 + 干净树部署模拟（git archive → 构建 → 启动 → 健康检查）。
+测试脚本已入库(`verifier/v1/` 起):`trpc_call.py`(tRPC HTTP 调用器)是全部套件的底座,`test_v5_api.py`(认证/判分/任务生命周期/SSRF)与 `verify_extra.py`(渠道/导出/工单/生词/管理台等 40 项)可直接对本地 3000 端口服务运行;`smoke_v5.py`(Playwright 前端冒烟)需浏览器环境。LLM 依赖用例(B9-B11/C 组)需先在「设置 → API 设置」配置真实渠道密钥。历史验收标准与运行记录见 `verifier/CRITERIA.md` 与 `verifier/runs/`。
+
+```bash
+cd verifier/v1
+PYTHONUTF8=1 python test_v5_api.py    # 需 3000 端口服务在跑
+PYTHONUTF8=1 python verify_extra.py   # 补充验收 40 项
+```
+
+每次交付:全量回归 + 干净树部署模拟(构建 → 启动 → 健康检查)。
 
 ## 完整数据库快照
 `db/dump.tar.gz` 是本仓库配套的全量数据库快照（30 张表、2763 行全部内容数据，含 AI 生成配图；`__drizzle_migrations` 由自举迁移自身管理，不在快照内）。渠道 API key 与账号口令已脱敏（`sk-REDACTED-*` 占位），在自己环境重新配置即可。
