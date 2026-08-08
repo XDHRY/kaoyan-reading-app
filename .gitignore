@@ -37,6 +37,7 @@ dist-ssr
 # Build outputs
 dist/
 build/
+release/
 # Test coverage
 coverage/
 .nyc_output/
@@ -46,3 +47,6 @@ coverage/
 # 快照解压产物(由 db/dump.tar.gz 解出,运行时资产,勿提交)
 db/dump_parts/
 __pycache__/
+
+# Android 签名密钥（含密钥信息文档，一律不入库）
+android/keystore/
