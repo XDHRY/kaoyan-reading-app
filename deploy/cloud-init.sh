@@ -12,7 +12,7 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/XDHRY/kaoyan-reading-app.git"
-BRANCH="packaging/exe-apk"
+BRANCH="main"
 APP_DIR="${APP_DIR:-/opt/kaoyan-reading-app}"
 
 info() { printf '\033[1;32m%s\033[0m\n' "$*"; }
