@@ -6,6 +6,18 @@
 
 ---
 
+## Unreleased（移动端 APK 独立使用 · 云部署一键化）
+
+- **移动端 APK 独立使用**：接入 Capacitor 打包 Android 壳（`capacitor.config.json`、`android/`、`@capacitor/*` 依赖）；APK 的 WebView origin `capacitor://localhost` 已纳入后端 CORS 默认白名单（`api/boot.ts`），配合公网后端「IP + 非标端口直连」即可独立使用，无需任何 CORS 配置。
+- **云服务器一条命令部署**：新增 `deploy/cloud-init.sh`（Ubuntu/Debian）——装 Docker → 克隆分支 `packaging/exe-apk` → 交互式生成 `.env`（管理员密码必填）→ `docker compose up -d --build` → 健康等待 → 数据恢复指引；幂等可重跑。`docs/部署指南.md` 同步新增「云部署一条命令」与 CORS/备案/IP 直连要点。
+- **部署资产修复**：
+  - `docker-compose.yml`：库名统一为 `kaoyan_reading`；`DATABASE_URL` 与 MySQL 口令改从 `.env` 读取并带默认值；端口参数化 `${APP_PORT:-3000}` / `${DB_PORT:-3306}`；app 服务加健康检查（`node -e fetch /api/trpc/ping`，`start_period` 60s，覆盖异步自举窗口）；新增 `restore` 一次性服务（`--profile restore run --rm restore`，容器内数据还原入口）；`CORS_ORIGINS` 透传。
+  - `Dockerfile`：runner 镜像补 `scripts_restore_dump.mjs`，供 restore 服务使用。
+  - `.dockerignore`：排除 `db/dump.tar.gz`、`db/dump_parts/`（镜像瘦身约 150MB，restore 时按需宿主机挂载）、`release/`、`android/`、`verifier/runs/`。
+  - `.env.example`：补全 `ADMIN_PASSWORD` / `CORS_ORIGINS` / `PORT` / `APP_PORT` / `DB_PORT` 及 `MYSQL_*`，中文注释说明 APK 场景无需 `CORS_ORIGINS`。
+
+---
+
 ## v5.11 — 2026-08-08（安全加固 · 排序内存修复 · 边界测试 137 项 · 文档体系补全）
 
 对应验收：`verifier/runs/20260808_v511.md`
