@@ -113,7 +113,7 @@ export const essayRouter = createRouter({
         await assertEssayOwner(input.id, ctx.user.id);
         await db
           .update(essays)
-          .set({ title: input.title, essayType: input.essayType, prompt: input.prompt, content: input.content })
+          .set({ title: input.title, essayType: input.essayType, prompt: input.prompt, content: input.content, updatedAt: new Date() })
           .where(eq(essays.id, input.id));
         return { id: input.id };
       }
@@ -179,7 +179,7 @@ export const essayRouter = createRouter({
       if (input.outline?.length) state.outline = input.outline;
       state.step = "drafting";
       state.currentPara = 1;
-      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown> }).where(eq(essayDrafts.id, draft.id));
+      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown>, updatedAt: new Date() }).where(eq(essayDrafts.id, draft.id));
       return { state };
     }),
 
@@ -206,7 +206,7 @@ export const essayRouter = createRouter({
       if (!paragraph) throw new Error("模型未返回段落正文，请重试");
       state.paragraphs[paraNo - 1] = paragraph;
       state.highlights[paraNo - 1] = { para: paraNo, highlights: normalizeHighlights(data.highlights), note: String(data.note ?? "") };
-      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown> }).where(eq(essayDrafts.id, draft.id));
+      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown>, updatedAt: new Date() }).where(eq(essayDrafts.id, draft.id));
       return { state, paragraph, paraNo, totalParas: state.outline.length };
     }),
 
@@ -227,7 +227,7 @@ export const essayRouter = createRouter({
       );
       state.outline = extractItems(data, "写作提纲") as DraftState["outline"];
       state.tips = String(data.tips ?? state.tips ?? "");
-      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown> }).where(eq(essayDrafts.id, draft.id));
+      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown>, updatedAt: new Date() }).where(eq(essayDrafts.id, draft.id));
       return { state };
     }),
 
@@ -256,10 +256,10 @@ export const essayRouter = createRouter({
         state.paragraphs[paraNo - 1] = paragraph;
         state.highlights[paraNo - 1] = { para: paraNo, highlights: normalizeHighlights(data.highlights), note: String(data.note ?? "") };
         // 每段落库一次：中途失败不丢已完成进度
-        await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown> }).where(eq(essayDrafts.id, draft.id));
+        await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown>, updatedAt: new Date() }).where(eq(essayDrafts.id, draft.id));
       }
       state.currentPara = total + 1;
-      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown> }).where(eq(essayDrafts.id, draft.id));
+      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown>, updatedAt: new Date() }).where(eq(essayDrafts.id, draft.id));
       return { state, totalParas: total };
     }),
 
@@ -286,7 +286,7 @@ export const essayRouter = createRouter({
       if (!paragraph) throw new Error("模型未返回段落正文，请重试");
       state.paragraphs[input.paraNo - 1] = paragraph;
       state.highlights[input.paraNo - 1] = { para: input.paraNo, highlights: normalizeHighlights(data.highlights), note: String(data.note ?? "") };
-      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown> }).where(eq(essayDrafts.id, draft.id));
+      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown>, updatedAt: new Date() }).where(eq(essayDrafts.id, draft.id));
       return { state, paragraph, paraNo: input.paraNo };
     }),
 
@@ -299,7 +299,7 @@ export const essayRouter = createRouter({
       const state = draft.state as unknown as DraftState;
       state.paragraphs[input.paraNo - 1] = input.content;
       if (input.paraNo >= state.currentPara) state.currentPara = input.paraNo + 1; // 回改旧段不倒退进度
-      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown> }).where(eq(essayDrafts.id, draft.id));
+      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown>, updatedAt: new Date() }).where(eq(essayDrafts.id, draft.id));
       return { state, nextPara: state.currentPara, totalParas: state.outline.length };
     }),
 
@@ -323,7 +323,7 @@ export const essayRouter = createRouter({
         })
         .$returningId();
       state.step = "done";
-      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown>, essayId }).where(eq(essayDrafts.id, draft.id));
+      await db.update(essayDrafts).set({ state: state as unknown as Record<string, unknown>, essayId, updatedAt: new Date() }).where(eq(essayDrafts.id, draft.id));
       return { essayId, content };
     }),
 
@@ -362,7 +362,7 @@ export const essayRouter = createRouter({
       { maxTokens: 12288, userId: uid },
     );
     const score = Number(data.score) || null;
-    await db.update(essays).set({ review: { ...data, modelUsed: model }, score }).where(eq(essays.id, essay.id));
+    await db.update(essays).set({ review: { ...data, modelUsed: model }, score, updatedAt: new Date() }).where(eq(essays.id, essay.id));
     return { review: { ...data, modelUsed: model }, score };
   }),
 

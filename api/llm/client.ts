@@ -5,6 +5,9 @@
  * key 只在服务端使用，永不回传前端明文
  */
 import type { Channel, ChannelConfig } from "@db/schema";
+// 原生平台（APK WebView）出站请求改走 CapacitorHttp 原生网络层（Android/iOS 系统网络栈，
+// 不经 WebView 的 XMLHttpRequest/fetch，天然无 CORS 预检问题）；Web/Node 保持原生 fetch 零变化。
+import { Capacitor, CapacitorHttp, type HttpOptions } from "@capacitor/core";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -41,7 +44,47 @@ function cfg(channel: Channel): ChannelConfig {
 /** 模型名自带档位（如 gpt-5.6-terra-xhigh）时不再注入 reasoning_effort */
 const TIER_SUFFIX = /-(none|low|medium|high|xhigh|max)$/i;
 
+/** 是否运行在 Capacitor 原生壳内（APK）。浏览器/Node 恒为 false，走原生 fetch */
+function isNativePlatform(): boolean {
+  try {
+    return typeof Capacitor !== "undefined" && Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * CapacitorHttp 响应适配：原生层已按 content-type 解析出 data（字符串或对象），
+ * 这里包一层与 fetch Response 兼容的最小面（ok/status/statusText/headers/json/text），
+ * 下游 fetchWithRetry 的调用代码零改动。
+ * body 统一传 JSON 字符串并显式带 Content-Type（原生层 data 仅支持 string/JSON）。
+ */
+async function nativeFetchOnce(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const opts: HttpOptions = {
+    url,
+    method: (init.method ?? "GET").toUpperCase(),
+    headers: (init.headers as Record<string, string> | undefined) ?? {},
+    connectTimeout: timeoutMs,
+    readTimeout: timeoutMs,
+  };
+  if (init.body != null) {
+    opts.data = typeof init.body === "string" ? init.body : JSON.stringify(init.body);
+  }
+  const res = await CapacitorHttp.request(opts);
+  const headers = new Headers(res.headers ?? {});
+  return {
+    ok: res.status >= 200 && res.status < 300,
+    status: res.status,
+    statusText: String(res.status),
+    headers,
+    json: async () => (typeof res.data === "string" ? JSON.parse(res.data) : res.data),
+    text: async () => (typeof res.data === "string" ? res.data : JSON.stringify(res.data)),
+  } as unknown as Response;
+}
+
 async function fetchOnce(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  // 原生平台：CapacitorHttp 自带 connect/read 超时，无需 AbortController
+  if (isNativePlatform()) return nativeFetchOnce(url, init, timeoutMs);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -253,14 +296,7 @@ export async function listModels(channel: Pick<Channel, "baseUrl" | "apiKey" | "
     channel.protocol === "anthropic"
       ? { "x-api-key": channel.apiKey, "anthropic-version": "2023-06-01", "User-Agent": BROWSER_UA }
       : { Authorization: `Bearer ${channel.apiKey}`, "User-Agent": BROWSER_UA };
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 60_000);
-  let res: Response;
-  try {
-    res = await fetch(`${base}/v1/models`, { headers, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
+  const res = await fetchOnce(`${base}/v1/models`, { method: "GET", headers }, 60_000);
   const data = (await res.json().catch(() => ({}))) as {
     error?: { message?: string };
     data?: { id?: string }[];

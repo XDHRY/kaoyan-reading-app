@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 import { and, desc, eq, gt, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { createRouter, privateQuery } from "./middleware";

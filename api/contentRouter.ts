@@ -86,7 +86,7 @@ export const promptRouter = createRouter({
         : and(eq(prompts.agentRole, input.agentRole), isNull(prompts.userId), eq(prompts.isActive, true));
       const existing = await db.query.prompts.findFirst({ where: scope });
       if (existing) {
-        await db.update(prompts).set({ isActive: false }).where(eq(prompts.id, existing.id));
+        await db.update(prompts).set({ isActive: false, updatedAt: new Date() }).where(eq(prompts.id, existing.id));
       }
       const version = (existing?.version ?? 0) + 1;
       const [{ id }] = await db

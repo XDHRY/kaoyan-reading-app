@@ -4,6 +4,9 @@ import type { TrpcContext } from "./context";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
+  // 离线模式把整套 appRouter 打进浏览器 bundle 用进程内 caller 直调（src/offline/link.ts）；
+  // tRPC v11 默认守卫「非服务端环境拒绝初始化」，此处显式放行（Node 端守卫本就通过，无副作用）
+  allowOutsideOfServer: true,
 });
 
 export const createRouter = t.router;

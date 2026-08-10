@@ -17,7 +17,20 @@ function createDb() {
 
 let instance: ReturnType<typeof createDb>;
 
+/** 离线模式注入的 sql-js drizzle 实例（Capacitor 壳内无 apiBase 时由 src/offline/db.ts 设置；
+ *  设置后 getDb() 直接返回它，MySQL 连接完全跳过——服务端（Web/EXE/Docker）行为零变化） */
+let offlineDb: ReturnType<typeof createDb> | null = null;
+
+export function setOfflineDb(db: ReturnType<typeof createDb> | null): void {
+  offlineDb = db;
+}
+
+export function isOfflineDb(): boolean {
+  return offlineDb !== null;
+}
+
 export function getDb() {
+  if (offlineDb) return offlineDb;
   if (!instance) instance = createDb();
   return instance;
 }

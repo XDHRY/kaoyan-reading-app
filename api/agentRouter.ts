@@ -69,6 +69,71 @@ async function loadPassage(id: number) {
   return { passage, questions: qs };
 }
 
+/**
+ * 离线模式（无 LLM）交卷：用随包预置的 analyses 缓存水合流水线 payload，
+ * 使 runPipelineJob 各阶段（structure/qAnalysis/locate/solve）因产物齐全全部跳过，
+ * 只做判分与落库（practice_records + 错题自动入册）——无网也能完成交卷。
+ * 缓存缺失/不完整 → 返回 null，流水线照常尝试 LLM（离线将以任务错误形态暴露，前端可见）。
+ * 键名双拼写兼容：流水线归档写 qAnalysis/locate，旧 saveResult 路径写 questionAnalysis/locateResult。
+ */
+async function offlineHydratePayload(
+  kind: "exam" | "generated",
+  refId: number,
+  answers: Record<string, string> | undefined,
+): Promise<Record<string, unknown> | null> {
+  const db = getDb();
+  const row = await db.query.analyses.findFirst({
+    where: and(eq(analyses.source, kind), eq(analyses.passageId, refId)),
+    orderBy: desc(analyses.id),
+  });
+  const cp = (row?.payload ?? {}) as Record<string, unknown>;
+  const structure = cp.structure as Record<string, unknown> | undefined;
+  const qA = (cp.qAnalysis ?? cp.questionAnalysis) as Record<string, unknown>[] | undefined;
+  const loc = (cp.locate ?? cp.locateResult) as Record<string, unknown>[] | undefined;
+  const solved = cp.solved as { qNo: number; answer: string }[] | undefined;
+  const review = cp.review as Record<string, unknown> | undefined;
+  if (!structure || !Array.isArray(qA) || !Array.isArray(loc) || !Array.isArray(solved) || !review) {
+    return null;
+  }
+  const payload: Record<string, unknown> = {
+    structure,
+    qAnalysis: qA,
+    locate: loc,
+    solved,
+    review,
+    // 交叉验证是增强项：无缓存时标记跳过（runner 遇 missing crosscheck 也会尝试 LLM，离线必失败）
+    crosscheck: (cp.crosscheck as Record<string, unknown> | undefined) ?? {
+      skipped: true,
+      reason: "离线模式无交叉验证缓存",
+    },
+    trace: [{ stage: "offline-cache", ok: true, note: "离线模式：采用随包预置解析完成交卷" }],
+    modelStructure: "离线缓存",
+    modelQuestion: "离线缓存",
+    modelLocate: "离线缓存",
+    modelSolve: "离线缓存",
+  };
+  // 判分与 runner solve 阶段逻辑一致：官方答案为唯一基准，AI 答案仅作无官方时降级
+  const content = await loadContent(kind, refId);
+  if (answers) {
+    const verdicts: Record<string, boolean> = {};
+    for (const item of solved) {
+      const q = content.questions.find((x) => x.qNo === item.qNo);
+      const mine = q ? answers[q.key] : undefined;
+      if (q && mine) {
+        const official = officialOf(q.answer, item.answer);
+        if (official) verdicts[q.key] = mine === official;
+      }
+    }
+    payload.verdicts = verdicts;
+  }
+  payload.officialAnswers = content.questions.map((q) => ({
+    qNo: q.qNo,
+    official: q.answer ?? null,
+    ai: solved.find((s) => s.qNo === q.qNo)?.answer ?? null,
+  }));
+  return payload;
+}
+
 // 提示词统一收口到 agentCore.FALLBACK_PROMPTS（单一事实源，两处路由共用）
 
 export const agentRouter = createRouter({
@@ -97,7 +162,7 @@ export const agentRouter = createRouter({
       if (running) {
         await db
           .update(pipelineJobs)
-          .set({ status: "error", errorMsg: "任务心跳超时（可能服务重启或上游卡死），已自动终止，可重试续跑" })
+          .set({ status: "error", errorMsg: "任务心跳超时（可能服务重启或上游卡死），已自动终止，可重试续跑", updatedAt: new Date() })
           .where(eq(pipelineJobs.id, running.id));
       }
       // 暂停中的同内容任务：直接交还前端（用户可「继续」续跑，不会另起新任务重复扣额度）
@@ -111,6 +176,10 @@ export const agentRouter = createRouter({
         orderBy: desc(pipelineJobs.id),
       });
       if (paused) return { jobId: paused.id, reused: true };
+      // 离线模式：预置解析缓存水合任务产物（无缓存则走正常 LLM 流程，离线会以任务错误形态暴露）
+      const hydrated = ctx.offline
+        ? await offlineHydratePayload(input.kind, input.refId, input.answers)
+        : null;
       const [{ id }] = await db
         .insert(pipelineJobs)
         .values({
@@ -118,7 +187,7 @@ export const agentRouter = createRouter({
           kind: input.kind,
           refId: input.refId,
           stages: [],
-          payload: {},
+          payload: hydrated ?? {},
           answers: input.answers ?? null,
         })
         .$returningId();
@@ -137,7 +206,7 @@ export const agentRouter = createRouter({
     if (job.status === "running" && !isAlive(job)) {
       await db
         .update(pipelineJobs)
-        .set({ status: "error", errorMsg: "任务心跳超时（可能服务重启或上游卡死），已自动终止，可重试续跑" })
+        .set({ status: "error", errorMsg: "任务心跳超时（可能服务重启或上游卡死），已自动终止，可重试续跑", updatedAt: new Date() })
         .where(eq(pipelineJobs.id, job.id));
       return { ...job, status: "error" as const, errorMsg: "任务心跳超时（可能服务重启或上游卡死），已自动终止，可重试续跑" };
     }
@@ -161,7 +230,7 @@ export const agentRouter = createRouter({
       if (job.status === "running" && !isAlive(job)) {
         await db
           .update(pipelineJobs)
-          .set({ status: "error", errorMsg: "任务心跳超时（可能服务重启或上游卡死），已自动终止，可重试续跑" })
+          .set({ status: "error", errorMsg: "任务心跳超时（可能服务重启或上游卡死），已自动终止，可重试续跑", updatedAt: new Date() })
           .where(eq(pipelineJobs.id, job.id));
         return { id: job.id, status: "error" as const };
       }
@@ -178,10 +247,14 @@ export const agentRouter = createRouter({
     .input(z.object({ key: z.string().max(64), value: z.string().max(255) }))
     .mutation(async ({ ctx, input }) => {
       const db = getDb();
-      await db
-        .insert(siteSettings)
-        .values({ k: `u${ctx.user.id}:${input.key}`, v: input.value })
-        .onDuplicateKeyUpdate({ set: { v: input.value } });
+      // 先查后改：兼容 MySQL/SQLite，避免 onDuplicateKeyUpdate（仅 MySQL 方言）
+      const k = `u${ctx.user.id}:${input.key}`;
+      const existing = await db.query.siteSettings.findFirst({ where: eq(siteSettings.k, k) });
+      if (existing) {
+        await db.update(siteSettings).set({ v: input.value }).where(eq(siteSettings.k, k));
+      } else {
+        await db.insert(siteSettings).values({ k, v: input.value });
+      }
       return { ok: true };
     }),
 
@@ -249,7 +322,7 @@ export const agentRouter = createRouter({
     );
     await db
       .update(pipelineJobs)
-      .set({ status: "running", errorMsg: "", stages })
+      .set({ status: "running", errorMsg: "", stages, updatedAt: new Date() })
       .where(eq(pipelineJobs.id, job.id));
     void runPipelineJob(job.id);
     return { ok: true };
@@ -270,11 +343,11 @@ export const agentRouter = createRouter({
       // 僵尸不可暂停：直接按心跳超时终结，让前端落到可重试的失败态
       await db
         .update(pipelineJobs)
-        .set({ status: "error", errorMsg: "任务心跳超时（可能服务重启或上游卡死），已自动终止，可重试续跑" })
+        .set({ status: "error", errorMsg: "任务心跳超时（可能服务重启或上游卡死），已自动终止，可重试续跑", updatedAt: new Date() })
         .where(eq(pipelineJobs.id, job.id));
       throw new TRPCError({ code: "BAD_REQUEST", message: "任务已卡死，已帮你终止——请用断点重试" });
     }
-    await db.update(pipelineJobs).set({ status: "paused" }).where(eq(pipelineJobs.id, job.id));
+    await db.update(pipelineJobs).set({ status: "paused", updatedAt: new Date() }).where(eq(pipelineJobs.id, job.id));
     return { ok: true };
   }),
 
@@ -290,7 +363,7 @@ export const agentRouter = createRouter({
       throw new TRPCError({ code: "BAD_REQUEST", message: "只有已暂停的任务才能继续" });
     }
     const stages = job.stages.map((s) => (s.status === "running" ? { ...s, status: "pending" as const } : s));
-    await db.update(pipelineJobs).set({ status: "running", errorMsg: "", stages }).where(eq(pipelineJobs.id, job.id));
+    await db.update(pipelineJobs).set({ status: "running", errorMsg: "", stages, updatedAt: new Date() }).where(eq(pipelineJobs.id, job.id));
     void runPipelineJob(job.id);
     return { ok: true };
   }),
@@ -311,7 +384,7 @@ export const agentRouter = createRouter({
     );
     await db
       .update(pipelineJobs)
-      .set({ status: "cancelled", errorMsg: "已被用户停止，可从断点重试", stages })
+      .set({ status: "cancelled", errorMsg: "已被用户停止，可从断点重试", stages, updatedAt: new Date() })
       .where(eq(pipelineJobs.id, job.id));
     return { ok: true };
   }),
@@ -522,7 +595,7 @@ export const agentRouter = createRouter({
             if (existing) {
               await db
                 .update(wrongItems)
-                .set({ myAnswer: mine, correctAnswer, mastered: false, attempts: existing.attempts + 1 })
+                .set({ myAnswer: mine, correctAnswer, mastered: false, attempts: existing.attempts + 1, updatedAt: new Date() })
                 .where(eq(wrongItems.id, existing.id));
             } else {
               await db.insert(wrongItems).values({
@@ -824,7 +897,7 @@ export const agentRouter = createRouter({
           if (existing) {
             await db
               .update(wrongItems)
-              .set({ myAnswer: mine, correctAnswer: q.answer, mastered: false, attempts: existing.attempts + 1 })
+              .set({ myAnswer: mine, correctAnswer: q.answer, mastered: false, attempts: existing.attempts + 1, updatedAt: new Date() })
               .where(eq(wrongItems.id, existing.id));
           } else {
             await db.insert(wrongItems).values({
@@ -976,18 +1049,24 @@ export const agentRouter = createRouter({
         userTakeaway: String(data.userTakeaway ?? ""),
         modelUsed: model,
       };
-      await db.insert(answerDiffs).values(values).onDuplicateKeyUpdate({
-        set: { rootCause: values.rootCause, aiReasoning: values.aiReasoning, officialLogic: values.officialLogic, userTakeaway: values.userTakeaway, modelUsed: model },
-      });
-      const row = await db.query.answerDiffs.findFirst({
-        where: and(
-          eq(answerDiffs.source, input.kind),
-          eq(answerDiffs.passageId, input.refId),
-          eq(answerDiffs.qNo, input.qNo),
-          eq(answerDiffs.aiAnswer, input.aiAnswer),
-          eq(answerDiffs.officialAnswer, input.officialAnswer),
-        ),
-      });
+      // 先查后改：兼容 MySQL/SQLite，避免 onDuplicateKeyUpdate（仅 MySQL 方言）
+      const keyWhere = and(
+        eq(answerDiffs.source, input.kind),
+        eq(answerDiffs.passageId, input.refId),
+        eq(answerDiffs.qNo, input.qNo),
+        eq(answerDiffs.aiAnswer, input.aiAnswer),
+        eq(answerDiffs.officialAnswer, input.officialAnswer),
+      );
+      const existingDiff = await db.query.answerDiffs.findFirst({ where: keyWhere });
+      if (existingDiff) {
+        await db
+          .update(answerDiffs)
+          .set({ rootCause: values.rootCause, aiReasoning: values.aiReasoning, officialLogic: values.officialLogic, userTakeaway: values.userTakeaway, modelUsed: model })
+          .where(keyWhere);
+      } else {
+        await db.insert(answerDiffs).values(values);
+      }
+      const row = await db.query.answerDiffs.findFirst({ where: keyWhere });
       return { diff: row, cached: false };
     }),
 });

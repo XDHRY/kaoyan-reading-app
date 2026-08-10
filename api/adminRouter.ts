@@ -212,10 +212,13 @@ export const adminRouter = createRouter({
     .input(z.object({ k: z.string().min(1).max(64), v: z.string().max(2000) }))
     .mutation(async ({ input }) => {
       const db = getDb();
-      await db
-        .insert(siteSettings)
-        .values({ k: input.k, v: input.v })
-        .onDuplicateKeyUpdate({ set: { v: input.v } });
+      // 兼容 MySQL/SQLite：先查后改，避免 onDuplicateKeyUpdate（仅 MySQL 方言）
+      const existing = await db.query.siteSettings.findFirst({ where: eq(siteSettings.k, input.k) });
+      if (existing) {
+        await db.update(siteSettings).set({ v: input.v }).where(eq(siteSettings.k, input.k));
+      } else {
+        await db.insert(siteSettings).values({ k: input.k, v: input.v });
+      }
       return { ok: true };
     }),
 

@@ -8,6 +8,8 @@ export type TrpcContext = {
   resHeaders: Headers;
   /** 通过 X-Session-Token 识别的当前登录用户；未登录为 null */
   user: User | null;
+  /** 离线模式标记（Capacitor 壳内 sql.js 直跑）：仅 src/offline/caller.ts 置 true，服务端恒 undefined */
+  offline?: boolean;
 };
 
 export async function createContext(

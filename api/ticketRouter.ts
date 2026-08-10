@@ -163,7 +163,7 @@ export const ticketRouter = createRouter({
       // 用户追问后若管理员已标记解决，回到处理中（对话未完）
       if (t.status === "resolved") {
         const log = [...(t.statusLog as { status: string; at: string; note?: string }[]), { status: "processing", at: new Date().toISOString(), note: "用户补充了新情况" }];
-        await db.update(tickets).set({ status: "processing", statusLog: log }).where(eq(tickets.id, t.id));
+        await db.update(tickets).set({ status: "processing", statusLog: log, updatedAt: new Date() }).where(eq(tickets.id, t.id));
       }
       return { ok: true };
     }),
@@ -173,7 +173,7 @@ export const ticketRouter = createRouter({
     const db = getDb();
     const t = await assertTicketOwner(input.ticketId, ctx.user.id);
     const log = [...(t.statusLog as { status: string; at: string; note?: string }[]), { status: "closed", at: new Date().toISOString(), note: "用户自行关闭" }];
-    await db.update(tickets).set({ status: "closed", statusLog: log }).where(eq(tickets.id, t.id));
+    await db.update(tickets).set({ status: "closed", statusLog: log, updatedAt: new Date() }).where(eq(tickets.id, t.id));
     return { ok: true };
   }),
 
@@ -234,7 +234,7 @@ export const ticketRouter = createRouter({
       });
       if (input.status && input.status !== t.status) {
         const log = [...(t.statusLog as { status: string; at: string; note?: string }[]), { status: input.status, at: new Date().toISOString(), note: input.note }];
-        await db.update(tickets).set({ status: input.status, statusLog: log }).where(eq(tickets.id, t.id));
+        await db.update(tickets).set({ status: input.status, statusLog: log, updatedAt: new Date() }).where(eq(tickets.id, t.id));
       }
       return { ok: true };
     }),
@@ -257,10 +257,14 @@ export const ticketRouter = createRouter({
         .values({ title: input.title, digest, content: input.content, authorName: ctx.user.name || "掌门" })
         .$returningId();
       // 兼容旧横幅：最新一期同步到 siteSettings.announcement（摘要格式）
-      await db
-        .insert(siteSettings)
-        .values({ k: "announcement", v: `【${input.title}】${digest}` })
-        .onDuplicateKeyUpdate({ set: { v: `【${input.title}】${digest}` } });
+      // 先查后改：兼容 MySQL/SQLite，避免 onDuplicateKeyUpdate（仅 MySQL 方言）
+      const banner = `【${input.title}】${digest}`;
+      const existingBanner = await db.query.siteSettings.findFirst({ where: eq(siteSettings.k, "announcement") });
+      if (existingBanner) {
+        await db.update(siteSettings).set({ v: banner }).where(eq(siteSettings.k, "announcement"));
+      } else {
+        await db.insert(siteSettings).values({ k: "announcement", v: banner });
+      }
       return { id };
     }),
 
@@ -270,10 +274,13 @@ export const ticketRouter = createRouter({
     await db.delete(announcements).where(eq(announcements.id, input.id));
     const latest = (await db.select().from(announcements).orderBy(desc(announcements.id)).limit(1))[0];
     const banner = latest ? `【${latest.title}】${latest.digest || deriveDigest(latest.content)}` : "";
-    await db
-      .insert(siteSettings)
-      .values({ k: "announcement", v: banner })
-      .onDuplicateKeyUpdate({ set: { v: banner } });
+    // 先查后改：兼容 MySQL/SQLite，避免 onDuplicateKeyUpdate（仅 MySQL 方言）
+    const existingBanner = await db.query.siteSettings.findFirst({ where: eq(siteSettings.k, "announcement") });
+    if (existingBanner) {
+      await db.update(siteSettings).set({ v: banner }).where(eq(siteSettings.k, "announcement"));
+    } else {
+      await db.insert(siteSettings).values({ k: "announcement", v: banner });
+    }
     return { ok: true };
   }),
 });
