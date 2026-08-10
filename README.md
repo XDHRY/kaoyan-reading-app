@@ -2,7 +2,7 @@
 
 帮助考研学生用「SOP 六阶段解题法」练习传统阅读的全栈应用：官方答案优先判分、六阶段解题流水线、错题闭环、AI 生题与作文工坊。水墨古风界面，单进程一键部署。
 
-- 版本：v5.11（见 [CHANGELOG.md](CHANGELOG.md)）
+- 版本：v5.12.1（见 [CHANGELOG.md](CHANGELOG.md)）
 - 技术栈：React 19 + Vite + Tailwind（前端）· Hono + tRPC 11 + Drizzle ORM + MySQL/TiDB（后端）
 
 ## 功能总览

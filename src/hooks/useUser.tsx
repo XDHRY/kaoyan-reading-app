@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { trpc } from "@/providers/trpc";
+import { trpc, isOfflineMode } from "@/providers/trpc";
 import { safeStorage } from "@/lib/safeStorage";
 
 export interface SessionUser {
@@ -42,15 +42,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      if (getSessionToken()) {
+      // 离线模式（Capacitor 壳内 sql.js 直跑）：无需 token，auth.me 由离线 caller 恒返回本地占位用户，
+      // 使交卷/查词/互动等全部功能以本地用户身份可用；联网模式行为不变（无 token 不查询）。
+      console.log("[user] effect start, token=", !!getSessionToken(), "offline=", isOfflineMode());
+      if (getSessionToken() || isOfflineMode()) {
         try {
           const me = await utils.client.auth.me.query();
+          console.log("[user] auth.me =>", me);
           if (alive && me) {
             setUser({ id: me.id, name: me.name, avatarChar: me.avatarChar, hasRecovery: me.hasRecovery, role: me.role });
           } else if (alive) {
             safeStorage.remove(TOKEN_KEY);
           }
         } catch (e) {
+          console.error("[user] auth.me 失败", e);
           // 仅 401（会话确实失效）才清除 token；网络抖动/5xx 保留登录态，下次自动恢复
           const msg = e instanceof Error ? e.message : "";
           if (alive && /UNAUTHORIZED|401/.test(msg)) safeStorage.remove(TOKEN_KEY);

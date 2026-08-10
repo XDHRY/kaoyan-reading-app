@@ -42,11 +42,17 @@ release/
 coverage/
 .nyc_output/
 
+# 浏览器离线测试运行产物（Chromium profile / 编译产物，勿提交）
+scripts/.tmp/
+
 # 数据库快照以 Release 附件分发（体积 88MB，超出 git 文本仓库合理载荷）
 
 # 快照解压产物(由 db/dump.tar.gz 解出,运行时资产,勿提交)
 db/dump_parts/
 __pycache__/
+
+# 验证器运行产物（API 响应缓存等；已入库的验收记录 .md 不受影响）
+verifier/runs/
 
 # Android 签名密钥（含密钥信息文档，一律不入库）
 android/keystore/

@@ -74,7 +74,7 @@ async function analyzeOne(wrongId: number, userId: number) {
   }
   await db
     .update(wrongItems)
-    .set({ errorType, hasAnalysis: true })
+    .set({ errorType, hasAnalysis: true, updatedAt: new Date() })
     .where(eq(wrongItems.id, wrongId));
   return db.query.wrongItemAnalyses.findFirst({ where: eq(wrongItemAnalyses.wrongId, wrongId) });
 }
@@ -134,9 +134,9 @@ export const insightRouter = createRouter({
         await db.insert(wrongItemAnalyses).values({ wrongId: input.wrongId, ...patch });
       }
       if (patch.errorType) {
-        await db.update(wrongItems).set({ errorType: patch.errorType, hasAnalysis: true }).where(eq(wrongItems.id, input.wrongId));
+        await db.update(wrongItems).set({ errorType: patch.errorType, hasAnalysis: true, updatedAt: new Date() }).where(eq(wrongItems.id, input.wrongId));
       } else {
-        await db.update(wrongItems).set({ hasAnalysis: true }).where(eq(wrongItems.id, input.wrongId));
+        await db.update(wrongItems).set({ hasAnalysis: true, updatedAt: new Date() }).where(eq(wrongItems.id, input.wrongId));
       }
       return { ok: true };
     }),
@@ -221,7 +221,7 @@ export const insightRouter = createRouter({
     };
     const existing = await db.query.wrongRecommendations.findFirst({ where: eq(wrongRecommendations.userId, uid) });
     if (existing) {
-      await db.update(wrongRecommendations).set(values).where(eq(wrongRecommendations.id, existing.id));
+      await db.update(wrongRecommendations).set({ ...values, updatedAt: new Date() }).where(eq(wrongRecommendations.id, existing.id));
     } else {
       await db.insert(wrongRecommendations).values({ userId: uid, ...values });
     }
@@ -295,10 +295,10 @@ export const insightRouter = createRouter({
         if (!row || row.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND", message: "感悟不存在" });
         await db
           .update(wrongInsights)
-          .set({ content: input.content, status: input.status, errorType: input.errorType })
+          .set({ content: input.content, status: input.status, errorType: input.errorType, updatedAt: new Date() })
           .where(eq(wrongInsights.id, input.id));
         if (input.wrongId) {
-          await db.update(wrongItems).set({ insightStatus: input.status }).where(eq(wrongItems.id, input.wrongId));
+          await db.update(wrongItems).set({ insightStatus: input.status, updatedAt: new Date() }).where(eq(wrongItems.id, input.wrongId));
         }
         return { id: input.id };
       }
@@ -307,7 +307,7 @@ export const insightRouter = createRouter({
         .values({ userId: ctx.user.id, wrongId: input.wrongId ?? null, errorType: input.errorType, content: input.content, status: input.status })
         .$returningId();
       if (input.wrongId) {
-        await db.update(wrongItems).set({ insightStatus: input.status }).where(eq(wrongItems.id, input.wrongId));
+        await db.update(wrongItems).set({ insightStatus: input.status, updatedAt: new Date() }).where(eq(wrongItems.id, input.wrongId));
       }
       return { id };
     }),
@@ -377,6 +377,7 @@ export const insightRouter = createRouter({
           lastReviewedAt: now,
           nextReviewAt: next,
           mastered: input.remembered && stage >= REVIEW_INTERVALS_DAYS.length - 1 ? true : item.mastered,
+          updatedAt: new Date(),
         })
         .where(eq(wrongItems.id, item.id));
       return { stage, nextReviewAt: next, days };
@@ -388,7 +389,7 @@ export const insightRouter = createRouter({
     const item = await assertWrongOwner(input.wrongId, ctx.user.id);
     if (item.nextReviewAt) return { ok: true, already: true };
     const next = new Date(Date.now() + REVIEW_INTERVALS_DAYS[0] * 86400_000);
-    await db.update(wrongItems).set({ nextReviewAt: next, reviewStage: 0 }).where(eq(wrongItems.id, item.id));
+    await db.update(wrongItems).set({ nextReviewAt: next, reviewStage: 0, updatedAt: new Date() }).where(eq(wrongItems.id, item.id));
     return { ok: true };
   }),
 });

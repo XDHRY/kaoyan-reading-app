@@ -55,26 +55,33 @@ export const vocabRouter = createRouter({
       const prompt = `你是考研英语词典。给出单词 "${word}" 的考研语境释义。
 ${input.context ? `出处原句：${input.context.slice(0, 500)}` : ""}
 只输出 JSON：{"zh": "汉语释义（含词性，30字内）", "contextZh": "原句在该语境中的含义（无原句则填空字符串）"}`;
-      const result = await callChat(
-        resolved.channel,
-        resolved.model,
-        [
-          { role: "system", content: prompt + "\n\n只输出合法 JSON，不要任何其他文字。" },
-          { role: "user", content: word },
-        ],
-        { maxTokens: 512, reasoningEffort: resolved.reasoningEffort },
-      );
       let zh = "";
       let contextZh = "";
       try {
-        const text = result.content.trim().replace(/^```(?:json)?|```$/g, "").trim();
-        const s = text.indexOf("{");
-        const e = text.lastIndexOf("}");
-        const parsed = JSON.parse(text.slice(s, e + 1));
-        zh = String(parsed.zh ?? "");
-        contextZh = String(parsed.contextZh ?? "");
-      } catch {
-        zh = result.content.slice(0, 120);
+        const result = await callChat(
+          resolved.channel,
+          resolved.model,
+          [
+            { role: "system", content: prompt + "\n\n只输出合法 JSON，不要任何其他文字。" },
+            { role: "user", content: word },
+          ],
+          { maxTokens: 512, reasoningEffort: resolved.reasoningEffort },
+        );
+        try {
+          const text = result.content.trim().replace(/^```(?:json)?|```$/g, "").trim();
+          const s = text.indexOf("{");
+          const e = text.lastIndexOf("}");
+          const parsed = JSON.parse(text.slice(s, e + 1));
+          zh = String(parsed.zh ?? "");
+          contextZh = String(parsed.contextZh ?? "");
+        } catch {
+          zh = result.content.slice(0, 120);
+        }
+      } catch (e) {
+        if (!ctx.offline) throw e;
+        // 离线兜底：AI 释义不可得时仍收藏生词（释义留空待联网补全，前端已支持空释义展示）
+        zh = "";
+        contextZh = "";
       }
       // 直接入册（查词即收藏，用户可在生词本删除）
       const [{ id }] = await db
@@ -172,7 +179,7 @@ export const wrongRouter = createRouter({
       const ok = input.answer === item.correctAnswer;
       await db
         .update(wrongItems)
-        .set({ attempts: item.attempts + 1, mastered: ok ? true : item.mastered, myAnswer: input.answer })
+        .set({ attempts: item.attempts + 1, mastered: ok ? true : item.mastered, myAnswer: input.answer, updatedAt: new Date() })
         .where(eq(wrongItems.id, item.id));
       return { ok, correctAnswer: item.correctAnswer };
     }),
@@ -180,7 +187,7 @@ export const wrongRouter = createRouter({
   unmaster: privateQuery.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
     const db = getDb();
     await assertWrongOwner(input.id, ctx.user.id);
-    await db.update(wrongItems).set({ mastered: false }).where(eq(wrongItems.id, input.id));
+    await db.update(wrongItems).set({ mastered: false, updatedAt: new Date() }).where(eq(wrongItems.id, input.id));
     return { ok: true };
   }),
 

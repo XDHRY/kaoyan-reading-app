@@ -50,7 +50,8 @@ async function sanitizeMethodRefs(solved: Record<string, unknown>[]): Promise<vo
 
 async function save(jobId: number, patch: Partial<PipelineJob>) {
   const db = getDb();
-  await db.update(pipelineJobs).set(patch).where(eq(pipelineJobs.id, jobId));
+  // updatedAt 显式更新：SQLite（离线模式）无 ON UPDATE 触发器，必须由写入方刷新生效
+  await db.update(pipelineJobs).set({ ...patch, updatedAt: new Date() }).where(eq(pipelineJobs.id, jobId));
 }
 
 /**

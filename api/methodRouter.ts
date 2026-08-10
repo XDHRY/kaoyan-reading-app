@@ -79,18 +79,32 @@ export const methodRouter = createRouter({
       const end = text.lastIndexOf("}");
       if (start === -1 || end === -1) throw new Error("模型未返回 JSON，请重试");
       const payload = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
-      await db
-        .insert(sentenceAnalyses)
-        .values({
-          source: input.kind,
-          passageId: input.refId,
-          paraNo: input.paraNo,
-          sentIdx: input.sentIdx,
-          sentence: input.sentence,
-          payload,
-          modelUsed: result.model,
-        })
-        .onDuplicateKeyUpdate({ set: { payload, sentence: input.sentence, modelUsed: result.model } });
+      // 先查后改：兼容 MySQL/SQLite，避免 onDuplicateKeyUpdate（仅 MySQL 方言）
+      const keyWhere = and(
+        eq(sentenceAnalyses.source, input.kind),
+        eq(sentenceAnalyses.passageId, input.refId),
+        eq(sentenceAnalyses.paraNo, input.paraNo),
+        eq(sentenceAnalyses.sentIdx, input.sentIdx),
+      );
+      const existing = await db.query.sentenceAnalyses.findFirst({ where: keyWhere });
+      if (existing) {
+        await db
+          .update(sentenceAnalyses)
+          .set({ payload, sentence: input.sentence, modelUsed: result.model })
+          .where(keyWhere);
+      } else {
+        await db
+          .insert(sentenceAnalyses)
+          .values({
+            source: input.kind,
+            passageId: input.refId,
+            paraNo: input.paraNo,
+            sentIdx: input.sentIdx,
+            sentence: input.sentence,
+            payload,
+            modelUsed: result.model,
+          });
+      }
       return { analysis: payload, model: result.model, cached: false };
     }),
 

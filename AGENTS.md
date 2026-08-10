@@ -41,7 +41,7 @@ docs/               部署与架构文档(本仓库补充)
 1. **只加不改**:新功能复用既有载体(如定制卷复用 `generatedSets`),不动既有判分路径。
 2. **判分唯一基准是官方答案**(`officialOf` 单点收口),AI 答案仅作无官方答案时的降级,UI 标注「AI 参考答案」。
 3. **认证三级守卫**:凡消耗算力(LLM)或写库的端点一律 `privateQuery`,userId 一律从 session 取(客户端传的一律忽略);浏览类只读端点保持 `public`(游客模式)。
-4. **密钥只存服务端**(DB/env),前端只见掩码;密码只存 scrypt 加盐哈希;渠道 baseUrl 校验 `^https://` 且禁内网段(防 SSRF)。
+4. **密钥只存服务端**(DB/env),前端只见掩码;密码只存 scrypt 加盐哈希;渠道 baseUrl 校验 `^https://` 且禁内网段(防 SSRF)。**唯一例外——离线 APK**:`scripts/offline-build-core.ts` 在 `OFFLINE_EMBED_KEYS=1` 时把 dump 内真实 api_key 内嵌进 offline.db(供 APK 内 sql.js 后端直调中转站),出站请求经 `api/llm/client.ts` 的 CapacitorHttp 原生网络层(无 CORS);该库默认构建(不设该环境变量)仍剥钥,且 offline.db 已被 `.gitignore` 排除、不入库。
 5. **任务生命周期**:启动清扫僵尸 running + 心跳门槛(10 分钟 updatedAt)+ 总 deadline(25 分钟)+ 断点续跑;前端永远看得到出口(暂停/停止/重试)。
 6. **错误不静默**:保存失败 → 可见提示 + 一键重试;`.catch(() => void 0)` 是红线。
 7. **古风契约**:7 个 CSS 变量、`rounded-[2px]`、无图标库、Seal/BrushTitle/meta-label 微文案;深色模式走 `html[data-theme="dark"]`。
