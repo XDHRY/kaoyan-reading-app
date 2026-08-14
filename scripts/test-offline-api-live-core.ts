@@ -79,7 +79,7 @@ function record(feature: string, before: number, ok: boolean, detail: string, re
     retried,
   };
   matrix.push(row);
-  ok ? passCount++ : failCount++;
+  if (ok) passCount++; else failCount++;
   console.log(`  ${ok ? "✅" : "❌"} ${feature}${row.calls ? `（真实调用 ${row.calls} 次）` : ""}: ${detail}`);
 }
 
@@ -410,7 +410,9 @@ async function main(): Promise<void> {
     try {
       const host = new URL(c.url).hostname;
       byHost[host] = (byHost[host] ?? 0) + 1;
-    } catch {}
+    } catch {
+      void 0; // 个别 URL 无法解析 host 时忽略
+    }
   }
   console.log("按 host 分布：" + JSON.stringify(byHost, null, 0));
   // 消耗异常提示：按功能最小期望值核对
