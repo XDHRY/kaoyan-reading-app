@@ -137,3 +137,10 @@ node scripts_restore_dump.mjs           # imports full data (append mode; run ag
 
 - Version history: CHANGELOG.md; each version maps to an acceptance record in `verifier/runs/`.
 - Rollback: `git checkout v5.10.0` (or any commit SHA), see [docs/开发指南.md](docs/开发指南.md) §6.
+
+## Data & Copyright Notice
+
+- **Exam corpus**: the real-exam passages and question bank in this repo are **for personal study/research only**. Any commercial use or redistribution is prohibited; copyright of the exam materials belongs to their original owners.
+- **Database snapshot** (`db/dump.tar.gz`): contains sanitized demo data (credentials redacted, channel keys as `sk-REDACTED-*` placeholders) for demonstration and development testing only — **no real user privacy data**.
+- **Channel keys**: API keys are never shipped with the code, images, or standard APK builds; configure your own under "Settings → Channel Management" after deployment.
+- Code is licensed under [LICENSE](LICENSE) (MIT); **data & corpus are NOT covered by the code license** and are subject to the terms above.
