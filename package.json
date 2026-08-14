@@ -1,7 +1,7 @@
 {
   "name": "my-app",
   "private": true,
-  "version": "5.12.2",
+  "version": "5.12.4",
   "description": "考研传统阅读助手：六步 SOP 精读真题",
   "author": "XDHRY",
   "type": "module",

@@ -13,10 +13,16 @@
  * 5. method.parseSentence + method.assocImage —— 长难句拆解 + 联想图
  * 6. insight.analyze —— 单题诊断书
  * 7. channel.test / channel.fetchModels —— 渠道连通性与模型列表
+ * 8. essay 生命周期补覆盖 —— reviseOutline → confirmOutline → generateAll →
+ *    reviseParagraph → finishDraft → review（复用 [2] 草稿，按状态机顺序走全流程）
+ * 9. insight.analyzeBatch + insight.recommend —— 批量诊断书 + AI 备考建议
+ * 10. agent.generate + agent.diffAnalysis —— AI 命题 + 答案差异分析
+ * 11. channel.selfCheck —— 可见渠道连通性 + 17 角色绑定解析试跑
  *
  * 环境变量：LIVE_SKIP_PIPELINE=1 可跳过流水线（复用已验证 run 的 done 结果，控制额度消耗）。
  *
- * 真实调用计数：拦截全局 fetch，只数打到 code.mmkg.cloud / api.deepseek.com 的出站请求。
+ * 真实调用计数：拦截全局 fetch，只数打到 code.mmkg.cloud / api.deepseek.com /
+ * token-plan（千问渠道）的出站请求。
  *
  * 任一功能 FAIL 仍继续跑完其余功能，最后 exit 1。
  */
@@ -49,7 +55,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       : input instanceof URL
         ? input.href
         : String(input.url);
-  if (/code\.mmkg\.cloud|api\.deepseek\.com/.test(url)) {
+  if (/code\.mmkg\.cloud|api\.deepseek\.com|token-plan/.test(url)) {
     realCalls.push({ method: init?.method ?? "GET", url });
   }
   return origFetch(input as RequestInfo, init);
@@ -248,6 +254,119 @@ async function main(): Promise<void> {
   }
 
   // -------------------------------------------------------------------------
+  // [2.5] essay 生命周期补覆盖：reviseOutline → confirmOutline → generateAll →
+  //       reviseParagraph → finishDraft → review（复用 [2] 的草稿，不重复烧 startDraft）
+  // -------------------------------------------------------------------------
+  console.log("[2.5] essayRouter 生命周期（reviseOutline → confirmOutline → generateAll → reviseParagraph → finishDraft → review）");
+  {
+    const drafts = await caller.essay.draftList();
+    const draft = drafts.find((d) => d.step === "outline") ?? drafts[0];
+    if (!draft) {
+      record("essay.reviseOutline", realCalls.length, false, "draftList 为空（startDraft 未落库），整链跳过");
+    } else {
+      const draftId = draft.id;
+      // reviseOutline：仅提纲阶段可用（step=outline，confirmOutline 前），note ≥1 字
+      {
+        const before = realCalls.length;
+        try {
+          const { value, attempts } = await attempt(() =>
+            caller.essay.reviseOutline({ draftId, note: "结尾段请补一句具体的建议，语气更真诚一些。" }),
+          );
+          const n = Array.isArray(value.state?.outline) ? value.state.outline.length : 0;
+          record(
+            "essay.reviseOutline",
+            before,
+            n > 0 && value.state?.step === "outline",
+            `draftId=${draftId} outline=${n} 段 step=${value.state?.step}`,
+            attempts > 1,
+          );
+        } catch (e) {
+          record("essay.reviseOutline", before, false, e instanceof Error ? e.message.slice(0, 220) : String(e));
+        }
+      }
+      // confirmOutline：非 API 但流程必经（0 LLM），进入逐段写作
+      {
+        const before = realCalls.length;
+        try {
+          const { value, attempts } = await attempt(() => caller.essay.confirmOutline({ draftId }));
+          record(
+            "essay.confirmOutline",
+            before,
+            value.state?.step === "drafting",
+            `step=${value.state?.step} currentPara=${value.state?.currentPara}`,
+            attempts > 1,
+          );
+        } catch (e) {
+          record("essay.confirmOutline", before, false, e instanceof Error ? e.message.slice(0, 220) : String(e));
+        }
+      }
+      // generateAll：confirmOutline 后逐段成稿（每段 1 次真实调用；幂等，失败重试只补余段）
+      {
+        const before = realCalls.length;
+        try {
+          const { value, attempts } = await attempt(() => caller.essay.generateAll({ draftId }));
+          const paras = Array.isArray(value.state?.paragraphs) ? value.state.paragraphs.filter(Boolean).length : 0;
+          record(
+            "essay.generateAll",
+            before,
+            paras > 0 && value.state?.step === "drafting",
+            `draftId=${draftId} 成段 ${paras}/${value.totalParas}`,
+            attempts > 1,
+          );
+        } catch (e) {
+          record("essay.generateAll", before, false, e instanceof Error ? e.message.slice(0, 220) : String(e));
+        }
+      }
+      // reviseParagraph：该段须已生成（取第 1 段）
+      {
+        const before = realCalls.length;
+        try {
+          const { value, attempts } = await attempt(() =>
+            caller.essay.reviseParagraph({ draftId, paraNo: 1, note: "语气再委婉一些，多用礼貌表达。" }),
+          );
+          const p = typeof value.paragraph === "string" ? value.paragraph.slice(0, 60) : "";
+          record(
+            "essay.reviseParagraph",
+            before,
+            typeof value.paragraph === "string" && value.paragraph.length > 20,
+            `para1 重写：${p}…`,
+            attempts > 1,
+          );
+        } catch (e) {
+          record("essay.reviseParagraph", before, false, e instanceof Error ? e.message.slice(0, 220) : String(e));
+        }
+      }
+      // finishDraft（内部步骤，0 LLM）：合成正式作文，供 review 使用
+      let essayId: number | null = null;
+      try {
+        const { value } = await attempt(() => caller.essay.finishDraft({ draftId, title: "live 生命周期测试信" }));
+        essayId = value.essayId;
+        console.log(`  （内部步骤 finishDraft → essayId=${essayId}，0 次真实调用）`);
+      } catch (e) {
+        console.log(`  （内部步骤 finishDraft 失败：${e instanceof Error ? e.message.slice(0, 200) : String(e)}）`);
+      }
+      // review：须有正式作文且含正文
+      if (essayId !== null) {
+        const before = realCalls.length;
+        try {
+          const { value, attempts } = await attempt(() => caller.essay.review({ essayId: essayId! }));
+          record(
+            "essay.review",
+            before,
+            value.review != null,
+            `essayId=${essayId} score=${value.score ?? "null"} 批改字段=${value.review ? Object.keys(value.review).length : 0}`,
+            attempts > 1,
+          );
+        } catch (e) {
+          record("essay.review", before, false, e instanceof Error ? e.message.slice(0, 220) : String(e));
+        }
+      } else {
+        record("essay.review", realCalls.length, false, "finishDraft 未产出 essayId，跳过");
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // [3] retro.create —— 定制卷出题（依赖前置练习记录）
   // -------------------------------------------------------------------------
   console.log("[3] retroRouter.create（定制卷出题）");
@@ -355,6 +474,41 @@ async function main(): Promise<void> {
   }
 
   // -------------------------------------------------------------------------
+  // [6.5] insight.analyzeBatch + recommend（无 UI 入口；错题来自 [0] 前置 saveResult）
+  // -------------------------------------------------------------------------
+  console.log("[6.5] insightRouter.analyzeBatch + recommend");
+  {
+    const before = realCalls.length;
+    try {
+      const { value, attempts } = await attempt(() => caller.insight.analyzeBatch({ wrongIds: [wrongId] }));
+      record(
+        "insight.analyzeBatch",
+        before,
+        value.okCount >= 1,
+        `wrongIds=[${wrongId}] ok=${value.okCount}/${value.results.length}`,
+        attempts > 1,
+      );
+    } catch (e) {
+      record("insight.analyzeBatch", before, false, e instanceof Error ? e.message.slice(0, 220) : String(e));
+    }
+  }
+  {
+    const before = realCalls.length;
+    try {
+      const { value, attempts } = await attempt(() => caller.insight.recommend({ force: true }));
+      record(
+        "insight.recommend",
+        before,
+        value.rec != null,
+        `headline=${String(value.rec?.headline ?? "").slice(0, 40)} cached=${value.cached}`,
+        attempts > 1,
+      );
+    } catch (e) {
+      record("insight.recommend", before, false, e instanceof Error ? e.message.slice(0, 220) : String(e));
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // [7] channel.test / fetchModels
   // -------------------------------------------------------------------------
   console.log("[7] channelRouter.test / fetchModels");
@@ -396,6 +550,89 @@ async function main(): Promise<void> {
   }
 
   // -------------------------------------------------------------------------
+  // [7.5] agent.generate（AI 命题）+ agent.diffAnalysis（答案差异分析）
+  // -------------------------------------------------------------------------
+  console.log("[7.5] agentRouter.generate + diffAnalysis");
+  let generatedRefId: number | null = null;
+  {
+    const before = realCalls.length;
+    try {
+      const { value, attempts } = await attempt(() =>
+        caller.agent.generate({
+          topic: "考研英语阅读理解·社会类",
+          difficulty: "medium",
+          focusTypes: ["detail", "main"],
+        }),
+      );
+      generatedRefId = value.id ?? null;
+      const qs = Array.isArray(value.set?.questions) ? value.set.questions.length : 0;
+      record(
+        "agent.generate",
+        before,
+        generatedRefId !== null && qs > 0,
+        `setId=${generatedRefId} 成题 ${qs} 道 reused=${value.reused}`,
+        attempts > 1,
+      );
+    } catch (e) {
+      record("agent.generate", before, false, e instanceof Error ? e.message.slice(0, 220) : String(e));
+    }
+  }
+  {
+    // 优先对刚生成的题做差异分析（kind=generated，refId 真实存在）；generate 失败则回退真题
+    const kind = generatedRefId !== null ? "generated" : "exam";
+    const refId = generatedRefId !== null ? generatedRefId : REF_PASSAGE;
+    const before = realCalls.length;
+    try {
+      const { value, attempts } = await attempt(() =>
+        caller.agent.diffAnalysis({
+          kind,
+          refId,
+          qNo: 1,
+          aiAnswer: "A",
+          officialAnswer: "C",
+          aiReasoning: "我定位到了原文第二段，但把细节题当成了推断题。",
+        }),
+      );
+      record(
+        "agent.diffAnalysis",
+        before,
+        value.diff != null && !!value.diff.rootCause,
+        `kind=${kind} refId=${refId} q1 rootCause=${value.diff?.rootCause ?? "?"} cached=${value.cached}`,
+        attempts > 1,
+      );
+    } catch (e) {
+      record("agent.diffAnalysis", before, false, e instanceof Error ? e.message.slice(0, 220) : String(e));
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // [8] channel.selfCheck —— 可见渠道连通性 + 17 角色绑定解析试跑（一次跑完）
+  // -------------------------------------------------------------------------
+  console.log("[8] channelRouter.selfCheck（渠道连通性 + 17 角色解析试跑）");
+  {
+    const before = realCalls.length;
+    try {
+      const { value, attempts } = await attempt(() => caller.channel.selfCheck());
+      const roles = Array.isArray(value.roles) ? value.roles : [];
+      const chans = Array.isArray(value.channels) ? value.channels : [];
+      const chats = roles.filter((r) => r.role !== "default_image"); // 绘图角色仅解析不试跑
+      const okRoles = chats.filter((r) => r.ok === true).length;
+      const okChans = chans.filter((c) => c.ok === true).length;
+      const roleDetail = chats.map((r) => `${r.role}${r.ok ? "✓" : "✗"}`).join(" ");
+      const chanDetail = chans.map((c) => `${c.name}${c.ok ? "✓" : "✗"}`).join("、");
+      record(
+        "channel.selfCheck",
+        before,
+        roles.length === 17,
+        `角色 chat ${okRoles}/${chats.length} ok（${roleDetail}）；渠道 ${okChans}/${chans.length} ok（${chanDetail}）`,
+        attempts > 1,
+      );
+    } catch (e) {
+      record("channel.selfCheck", before, false, e instanceof Error ? e.message.slice(0, 220) : String(e));
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // 汇总
   // -------------------------------------------------------------------------
   console.log("\n======== 功能 × 结果矩阵 ========");
@@ -411,7 +648,7 @@ async function main(): Promise<void> {
       const host = new URL(c.url).hostname;
       byHost[host] = (byHost[host] ?? 0) + 1;
     } catch {
-      void 0; // 个别 URL 无法解析 host 时忽略
+      /* 忽略解析失败的 URL */
     }
   }
   console.log("按 host 分布：" + JSON.stringify(byHost, null, 0));
@@ -431,6 +668,16 @@ async function main(): Promise<void> {
       "channel.test ch2(MMKG image)": 1,
       "channel.test ch2141253(DeepSeek)": 1,
       "channel.fetchModels ch2141253": 1,
+      "essay.reviseOutline": 1,
+      "essay.confirmOutline": 0,
+      "essay.generateAll": 3,
+      "essay.reviseParagraph": 1,
+      "essay.review": 1,
+      "insight.analyzeBatch": 1,
+      "insight.recommend": 1,
+      "agent.generate": 1,
+      "agent.diffAnalysis": 1,
+      "channel.selfCheck": 20,
     };
     if (expectMin[row.feature] !== undefined && row.calls > expectMin[row.feature] * 2) {
       warn.push(`${row.feature} 调用 ${row.calls} 次（超最小期望 ${expectMin[row.feature]} 次 2 倍以上，可能反复重试）`);

@@ -182,6 +182,23 @@ function resolveDatabaseUrl() {
   return "mysql://root@127.0.0.1:3307/kaoyan_reading";
 }
 
+// 从打包内 .env（asar 根）读取单值，供私有版把真实渠道密钥注入子进程。
+// 公有版不打包 .env → 返回空串 → 种子落占位符（行为与历史一致）。
+function resolveEnvVar(name) {
+  const envPath = path.join(APP_ROOT, ".env");
+  if (fs.existsSync(envPath)) {
+    const text = fs.readFileSync(envPath, "utf8");
+    const re = new RegExp(`^\\s*${name}\\s*=\\s*(.+?)\\s*$`);
+    for (const line of text.split(/\r?\n/)) {
+      const m = line.match(re);
+      if (m) {
+        return m[1].trim().replace(/^["']|["']$/g, "");
+      }
+    }
+  }
+  return "";
+}
+
 // ---------------------------------------------------------------- 后端服务
 let serviceChild = null;
 
@@ -192,6 +209,8 @@ function startService(port) {
     NODE_ENV: "production",
     PORT: String(port),
     DATABASE_URL: resolveDatabaseUrl(),
+    // 私有版注入真实渠道密钥；公有版 .env 未打包 → 空串，种子落占位符
+    MMKG_API_KEY: resolveEnvVar("MMKG_API_KEY"),
   };
   if (!fs.existsSync(BOOT_JS)) {
     throw new Error(`后端产物不存在：${BOOT_JS}（请先执行 npm run build）`);

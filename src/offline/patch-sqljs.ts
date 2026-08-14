@@ -25,9 +25,7 @@
  * 值非字符串（mapResultRow 已解码 / 非 json 列）时原样透传，幂等安全。
  */
 import { PreparedQuery, SQLJsSession } from "drizzle-orm/sql-js";
-import { getTableConfig } from "drizzle-orm/sqlite-core/utils";
 import { SQLiteInsertBase } from "drizzle-orm/sqlite-core/query-builders/insert";
-import type { SQLiteTable } from "drizzle-orm/sqlite-core";
 
 type OriginalPrepareQuery = (
   query: unknown,
@@ -137,29 +135,39 @@ preparedQueryProto.get = function (this: PreparedQueryInstance, placeholderValue
 /**
  * mysql 版（MySqlInsertBase.$returningId）把主键列写入 config.returning，执行时由驱动用
  * insertId 造出 `[{ <列名>: <id> }]` 数组。sqlite 原生支持 RETURNING，这里直接走同一形态：
- * 用 getTableConfig 找唯一 autoincrement integer 主键列，把 `[{ field, path }]` 写入
+ * 用表对象的 Columns 符号找唯一 autoincrement integer 主键列，把 `[{ field, path }]` 写入
  * config.returning，后续 execute()/then → all() → mapResultRow 得到 `[{ <列名>: <自增id> }]`；
  * 多行 insert 每行一个元素（与 mysql 按 affectedRows 逐个造元素对齐），调用方统一
  * `const [{ id }] = await db.insert(...).values(...).$returningId()` 解构首行 id。
  * 返回 this 保持 thenable 链式语义。
+ *
+ * 注意：不能走 `getTableConfig`（sqlite 版）——它读 `SQLiteInlineForeignKeys` 符号，对
+ * mysql 版表对象（vite:pre-alias 竞态泄漏进客户端 bundle 时会出现）该符号为 undefined，
+ * 直接 `Object.values(undefined)` 崩（v5.12.2 查词崩溃根因）。这里直接读两种表都带有的
+ * `Symbol.for("drizzle:Columns")`，对 mysql/sqlite 表都鲁棒。
  */
 type SQLiteInsertBaseLike = { config: { table: unknown; returning?: unknown } };
 type PkColumnLike = { name: string; primary?: boolean; autoIncrement?: boolean };
 
 (SQLiteInsertBase.prototype as unknown as { $returningId: () => unknown }).$returningId =
   function $returningId(this: SQLiteInsertBaseLike) {
-    const tableConfig = getTableConfig(this.config.table as SQLiteTable);
-    const pkCols = tableConfig.columns.filter((c) => {
-      const col = c as unknown as PkColumnLike;
-      return col.primary === true && col.autoIncrement === true;
-    });
-    if (pkCols.length !== 1) {
+    const table = this.config.table as Record<PropertyKey, unknown>;
+    const columns =
+      (table[Symbol.for("drizzle:Columns")] as Record<string, PkColumnLike> | undefined) ?? {};
+    const pkCols = Object.values(columns);
+    // 优先唯一 autoincrement 主键（sqlite 表标准形态）；mysql 表列上 autoIncrement 恒为
+    // false（auto_increment 走 dialect insertId），回退到唯一主键列，避免漏检。
+    const auto =
+      pkCols.filter((c) => c.primary === true && c.autoIncrement === true);
+    const picked = auto.length === 1 ? auto : pkCols.filter((c) => c.primary === true);
+    if (picked.length !== 1) {
+      const name = (table[Symbol.for("drizzle:Name")] as string | undefined) ?? "?";
       throw new Error(
-        `$returningId 仅支持唯一 autoincrement integer 主键列；表 ${tableConfig.name} 命中 ` +
-          `${pkCols.length} 个，请改用 .returning()`,
+        `$returningId 仅支持唯一 autoincrement integer 主键列；表 ${name} 命中 ` +
+          `${picked.length} 个，请改用 .returning()`,
       );
     }
-    const col = pkCols[0] as unknown as PkColumnLike;
+    const col = picked[0] as unknown as PkColumnLike;
     this.config.returning = [{ field: col as never, path: [col.name] }];
     return this;
   };
