@@ -6,7 +6,9 @@
 
 ---
 
-## Unreleased（移动端 APK 独立使用 · 云部署一键化）
+## v5.12.2 — 2026-08-14（移动端 APK 独立使用 · 云部署一键化）
+
+对应发布：`发布 v5.12.2——离线 APK：后端整体内置，无需服务器`
 
 - **移动端 APK 独立使用**：接入 Capacitor 打包 Android 壳（`capacitor.config.json`、`android/`、`@capacitor/*` 依赖）；APK 的 WebView origin `capacitor://localhost` 已纳入后端 CORS 默认白名单（`api/boot.ts`），配合公网后端「IP + 非标端口直连」即可独立使用，无需任何 CORS 配置。
 - **云服务器一条命令部署**：新增 `deploy/cloud-init.sh`（Ubuntu/Debian）——装 Docker → 克隆分支 `packaging/exe-apk` → 交互式生成 `.env`（管理员密码必填）→ `docker compose up -d --build` → 健康等待 → 数据恢复指引；幂等可重跑。`docs/部署指南.md` 同步新增「云部署一条命令」与 CORS/备案/IP 直连要点。
@@ -15,6 +17,7 @@
   - `Dockerfile`：runner 镜像补 `scripts_restore_dump.mjs`，供 restore 服务使用。
   - `.dockerignore`：排除 `db/dump.tar.gz`、`db/dump_parts/`（镜像瘦身约 150MB，restore 时按需宿主机挂载）、`release/`、`android/`、`verifier/runs/`。
   - `.env.example`：补全 `ADMIN_PASSWORD` / `CORS_ORIGINS` / `PORT` / `APP_PORT` / `DB_PORT` 及 `MYSQL_*`，中文注释说明 APK 场景无需 `CORS_ORIGINS`。
+- **CI 修复**：`scripts/test-offline-api-live-core.ts` 修复 2 处 ESLint 违规（`no-unused-expressions`、`no-empty`），构建恢复全绿。
 
 ---
 
