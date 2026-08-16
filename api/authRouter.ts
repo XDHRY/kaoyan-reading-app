@@ -70,7 +70,7 @@ export const authRouter = createRouter({
   register: publicQuery
     .input(
       z.object({
-        name: z.string().min(1, "请输入昵称").max(32),
+        name: z.string().trim().min(1, "请输入昵称").max(32),
         password: passwordSchema,
         recoveryQuestion: z.string().min(2, "请设置密保问题").max(128),
         recoveryAnswer: z.string().min(1, "请设置密保答案").max(64),
@@ -127,7 +127,7 @@ export const authRouter = createRouter({
 
   /** 登录：5 次失败锁 5 分钟 */
   login: publicQuery
-    .input(z.object({ name: z.string().min(1).max(32), password: z.string().min(1).max(64) }))
+    .input(z.object({ name: z.string().trim().min(1).max(32), password: z.string().min(1).max(64) }))
     .mutation(async ({ input }) => {
       const db = getDb();
       const name = input.name.trim();
@@ -172,7 +172,7 @@ export const authRouter = createRouter({
 
   /** 找回第一步：取密保问题（不泄露是否有该用户以外的信息） */
   recoveryQuestionFor: publicQuery
-    .input(z.object({ name: z.string().min(1).max(32) }))
+    .input(z.object({ name: z.string().trim().min(1).max(32) }))
     .query(async ({ input }) => {
       const db = getDb();
       const user = await db.query.users.findFirst({ where: eq(users.name, input.name.trim()) });
@@ -186,7 +186,7 @@ export const authRouter = createRouter({
   resetPassword: publicQuery
     .input(
       z.object({
-        name: z.string().min(1).max(32),
+        name: z.string().trim().min(1).max(32),
         recoveryAnswer: z.string().min(1).max(64),
         newPassword: passwordSchema,
       }),
@@ -257,7 +257,7 @@ export const authRouter = createRouter({
   updateProfile: privateQuery
     .input(
       z.object({
-        name: z.string().min(1).max(32).optional(),
+        name: z.string().trim().min(1).max(32).optional(),
         avatarChar: z.string().max(4).optional(),
       }),
     )
