@@ -36,7 +36,7 @@ export const vocabRouter = createRouter({
   lookup: privateQuery
     .input(
       z.object({
-        word: z.string().min(1).max(64),
+        word: z.string().trim().min(1).max(64),
         context: z.string().max(2000).optional(),
         passageId: z.number().optional(),
       }),
