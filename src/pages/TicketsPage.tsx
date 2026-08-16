@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useUser } from "@/hooks/useUser";
 import { useToast } from "@/hooks/useToast";
+import { dataUrlToBlobUrl } from "@/lib/imageBlob";
 import { BrushTitle, InkReveal, PaperCard, InkDivider } from "@/components/ink/decor";
 import { Seal, StepSeal } from "@/components/ink/Seal";
 
@@ -51,7 +52,7 @@ function TicketDetail({ id, onChanged }: { id: number; onChanged: () => void }) 
         <div className="flex gap-2 flex-wrap">
           {attachments.map((a) => (
             <a key={a.id} href={`data:${a.mime};base64,${a.dataBase64}`} target="_blank" rel="noreferrer">
-              <img src={`data:${a.mime};base64,${a.dataBase64}`} alt={a.name} className="h-24 border border-[var(--line)] rounded-[2px] hover:opacity-85" />
+              <img src={dataUrlToBlobUrl(`data:${a.mime};base64,${a.dataBase64}`)} alt={a.name} className="h-24 border border-[var(--line)] rounded-[2px] hover:opacity-85" />
             </a>
           ))}
         </div>

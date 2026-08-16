@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { useUser } from "@/hooks/useUser";
+import { dataUrlToBlobUrl } from "@/lib/imageBlob";
 import { BrushTitle, PaperCard } from "@/components/ink/decor";
 import { Seal } from "@/components/ink/Seal";
 
@@ -469,7 +470,7 @@ function TicketsAdminTab() {
                     <div className="flex gap-2 flex-wrap">
                       {detailQ.data.attachments.map((a) => (
                         <a key={a.id} href={`data:${a.mime};base64,${a.dataBase64}`} target="_blank" rel="noreferrer">
-                          <img src={`data:${a.mime};base64,${a.dataBase64}`} alt={a.name} className="h-20 border border-[var(--line)] rounded-[2px]" />
+                          <img src={dataUrlToBlobUrl(`data:${a.mime};base64,${a.dataBase64}`)} alt={a.name} className="h-20 border border-[var(--line)] rounded-[2px]" />
                         </a>
                       ))}
                     </div>

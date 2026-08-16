@@ -3,6 +3,7 @@ import { useLocation, Link } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { Seal } from "@/components/ink/Seal";
 import { APP_VERSION, recentErrors } from "@/lib/errorLog";
+import { dataUrlToBlobUrl } from "@/lib/imageBlob";
 import { useToast } from "@/hooks/useToast";
 
 const KINDS = [
@@ -157,7 +158,7 @@ export function FeedbackForm({ onDone }: { onDone?: () => void }) {
           >{compressing ? "处理中…" : `＋ 附截图（${shots.length}/3）`}</button>
           {shots.map((s, i) => (
             <span key={i} className="relative inline-block">
-              <img src={s.preview} alt={`截图${i + 1}`} className="h-14 border border-[var(--line)] rounded-[2px]" />
+              <img src={dataUrlToBlobUrl(s.preview)} alt={`截图${i + 1}`} className="h-14 border border-[var(--line)] rounded-[2px]" />
               <button
                 onClick={() => setShots((arr) => arr.filter((_, j) => j !== i))}
                 className="absolute -top-1.5 -right-1.5 w-4 h-4 text-[10px] bg-[var(--vermilion)] text-[var(--paper)] rounded-full leading-none"
