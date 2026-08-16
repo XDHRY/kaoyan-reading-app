@@ -49,32 +49,54 @@ A full-stack app that helps Chinese postgraduate entrance-exam (考研) candidat
 
 Full usage guide: [docs/使用手册.md](docs/使用手册.md) (Chinese).
 
-## Quick Start
+## Three Ways to Use (pick one)
 
-### Prerequisites
+**One core codebase, three delivery forms.** All three share the same features (real exams / six-stage analysis / mistakes / vocab / essays / AI generation / stats); they differ only in **runtime environment** and **data storage**:
 
-- Node.js ≥ 20
-- MySQL 8+ (or TiDB) — **must start in UTC timezone** (`--default-time-zone='+00:00'`), otherwise TIMESTAMPs are 8 hours ahead and stale-task detection breaks
-- LLM channel keys (optional but recommended): OpenAI-compatible / Anthropic-compatible relay or official channels; configure after deploy in "Settings → API Settings"
+| Form | For whom | Data storage | How to start |
+|---|---|---|---|
+| **Web service** | Developers / self-hosting | External MySQL (or TiDB) | `npm run build && node dist/boot.js` |
+| **Windows desktop (EXE)** | Regular desktop users | Bundled MySQL (auto-started, zero config) | Download EXE, double-click |
+| **Android offline (APK)** | Mobile users | Bundled SQLite offline DB (no server) | Install APK, done |
 
-### One-command start
+> **AI features**: all three forms support AI (analysis / essays / generation / images) after configuring an API channel. Public builds require you to fill in your own channel under "Settings → Models"; private builds embed the author's channels (local distribution only).
+
+### Option 1: Web service (single process, self-hosted)
 
 ```bash
+# Prerequisites: Node.js ≥ 20, MySQL 8+ (UTC timezone!)
 cp .env.example .env   # fill in DATABASE_URL, APP_ID, APP_SECRET, ADMIN_PASSWORD
 npm ci
 npm run build          # frontend vite build + backend esbuild → dist/boot.js
 NODE_ENV=production node dist/boot.js   # single process: static site + tRPC + bootstrap migrations
 ```
 
-First startup automatically: create tables (idempotent migrations) → seed data (SOP terms / real-exam corpus / preconfigured channels) → admin account (overridable via `ADMIN_PASSWORD`, otherwise a random password is printed once). Open `http://localhost:3000`.
+Open `http://localhost:3000`. First startup automatically: create tables (idempotent migrations) → seed data (SOP terms / real-exam corpus) → admin account (overridable via `ADMIN_PASSWORD`, otherwise a random password is printed once).
 
-> Database deployment details: [docs/部署指南.md](docs/部署指南.md) and [docs/开发指南.md](docs/开发指南.md) §1 (Chinese).
+> Database & timezone details: [docs/部署指南.md](docs/部署指南.md) (Chinese).
+
+### Option 2: Windows desktop (EXE)
+
+Download `kaoyan-5.12.5-win.exe` (portable) or `kaoyan-5.12.5-setup.exe` (installer) from [Releases](https://github.com/XDHRY/kaoyan-reading-app/releases):
+
+1. Double-click — first run auto-starts the **bundled MySQL** (requires MySQL 8 installed, or point `KYSOP_MYSQL_BIN` to mysqld.exe)
+2. A local browser page opens with the same features as the web version
+3. Configure AI channels under "Settings → Models" (public build requires your own keys)
+
+### Option 3: Android offline (APK)
+
+Download `kaoyan-5.12.5-android.apk` from [Releases](https://github.com/XDHRY/kaoyan-reading-app/releases):
+
+1. Install and use — **no server, no network needed** (bundled SQLite offline DB with the full exam corpus)
+2. All local features work; AI features need network + a configured channel ("Settings → Models")
+3. Screenshot walkthrough of every feature: [docs/功能导览.md](docs/功能导览.md) (captured on the APK)
 
 ## Docs Index
 
 | Document | Audience | Contents |
 |----------|----------|----------|
 | [docs/使用手册.md](docs/使用手册.md) | Users | Sign up/login → real-exam practice → six-stage analysis → mistakes/vocab/AI passages/essays/stats → settings & FAQ |
+| [docs/功能导览.md](docs/功能导览.md) | Everyone | **Screenshot walkthrough of every feature** (captured on the APK, bilingual-friendly) |
 | [docs/API 概览.md](docs/API 概览.md) | Developers/Integration | All tRPC endpoints (public 14 / private 98 / admin 15) + zod boundary table + authorization & isolation |
 | [docs/架构说明.md](docs/架构说明.md) | Developers | Request flow / database / pipeline / channel hub / security design |
 | [docs/开发指南.md](docs/开发指南.md) | Developers | Environment setup, build & migration, methodology (PonyTAIL), commit conventions, version rollback |

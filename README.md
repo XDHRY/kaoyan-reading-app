@@ -20,9 +20,55 @@
 
 | 启动页 · 水墨古风 | 真题精读 · 长难句 | 作文工坊 · 逐段进化 | AI 生题 · 定制卷 |
 |---|---|---|---|
-| ![启动页](docs/screenshots/launch.png) | ![真题精读](docs/screenshots/passage.png) | ![作文工坊](docs/screenshots/essay.png) | ![AI 生题](docs/screenshots/proposition.png) |
+| ![启动页](docs/screenshots/02-home.png) | ![真题精读](docs/screenshots/05-reading.png) | ![作文工坊](docs/screenshots/10-essay.png) | ![AI 生题](docs/screenshots/13-ai-proposition.png) |
 
-> 截图来自 Android 模拟器实测（v5.12.x 验收记录）。
+> 截图来自 Android 模拟器实测（v5.12.5）。**每个功能的完整顺序截图见 [docs/功能导览.md](docs/功能导览.md)**。
+
+## 三种使用方式（先选一种）
+
+本项目**一份核心代码，三种交付形态**。三端共享全部功能（真题 / 六阶段解析 / 错题 / 生词 / 作文 / AI 出题 / 统计），区别只在**运行环境**与**数据存储**：
+
+| 形态 | 适合谁 | 数据存储 | 怎么启动 |
+|---|---|---|---|
+| **Web 服务** | 开发者 / 自建服务器 | 外部 MySQL（或 TiDB） | `npm run build && node dist/boot.js` |
+| **Windows 桌面版（EXE）** | 普通电脑用户 | 内置 MySQL（自动拉起，零配置） | 下载 EXE 双击即用 |
+| **Android 离线版（APK）** | 手机用户 | 内置 SQLite 离线库（免服务器） | 安装 APK 即用 |
+
+> **AI 功能说明**：三端都支持 AI（解析 / 作文 / 出题 / 配图），需要配置 API 渠道。公共版在「设置 → 模型」自行填写；私有版已内置作者渠道（仅本地分发）。
+
+### 方式一：Web 服务（前后端一体，适合自部署）
+
+```bash
+# 前置：Node.js ≥ 20、MySQL 8+（须 UTC 时区启动）
+cp .env.example .env   # 填 DATABASE_URL、APP_ID、APP_SECRET、ADMIN_PASSWORD
+npm ci
+npm run build          # 前端 vite build + 后端 esbuild → dist/boot.js
+NODE_ENV=production node dist/boot.js   # 单进程：静态站点 + tRPC + 自举迁移
+```
+
+打开 `http://localhost:3000` 即用。首次启动自动：建表（幂等迁移）→ 种子数据（SOP 条款/真题语料）→ 管理员账号（`ADMIN_PASSWORD` 可覆盖，否则打印随机密码）。
+
+> 数据库与时区细节见 [docs/部署指南.md](docs/部署指南.md)。
+
+### 方式二：Windows 桌面版（EXE）
+
+从 [Releases](https://github.com/XDHRY/kaoyan-reading-app/releases) 下载 `kaoyan-5.12.5-win.exe`（便携版）或 `kaoyan-5.12.5-setup.exe`（安装版）：
+
+1. 双击运行——首次启动会自动拉起**内置 MySQL**（需本机已装 MySQL 8，或设置 `KYSOP_MYSQL_BIN` 指向 mysqld.exe）
+2. 浏览器自动打开本地服务页面，功能与 Web 版一致
+3. AI 功能在「设置 → 模型」配置渠道（公共版需自填）
+
+> 桌面版打包细节见 [docs/开发指南.md](docs/开发指南.md)。
+
+### 方式三：Android 离线版（APK）
+
+从 [Releases](https://github.com/XDHRY/kaoyan-reading-app/releases) 下载 `kaoyan-5.12.5-android.apk` 安装到手机：
+
+1. 安装即用，**无需服务器、无需网络**（内置 SQLite 离线库与全部真题）
+2. 全部本地功能可用；AI 功能需联网并在「设置 → 模型」配置渠道（公共版自填）
+3. 完整功能界面见 [docs/功能导览.md](docs/功能导览.md)（APK 实测截图）
+
+---
 
 ## 交付物与隐私（重要）
 
@@ -55,34 +101,14 @@
 | 管理台 | 用户管理、全站渠道、全局设置、SOP 条款、工单回复、公告发布 |
 | 数据出口 | 一键导出全量 JSON 备份，可导入恢复 |
 
-完整操作说明见 [docs/使用手册.md](docs/使用手册.md)。
-
-## 快速上手
-
-### 前置要求
-
-- Node.js ≥ 20
-- MySQL 8+（或 TiDB）——**必须以 UTC 时区启动**（`--default-time-zone='+00:00'`），否则 TIMESTAMP 偏大 8 小时、僵尸任务判定失效
-- LLM 渠道密钥（可选但推荐）：OpenAI 兼容 / Anthropic 兼容的中转或官方渠道，部署后在「设置 → API 设置」配置
-
-### 一键启动
-
-```bash
-cp .env.example .env   # 填 DATABASE_URL、APP_ID、APP_SECRET、ADMIN_PASSWORD
-npm ci
-npm run build          # 前端 vite build + 后端 esbuild → dist/boot.js
-NODE_ENV=production node dist/boot.js   # 单进程：静态站点 + tRPC + 自举迁移
-```
-
-首次启动自动：建表（幂等迁移）→ 种子数据（SOP 条款/真题语料/预置渠道）→ 管理员账号（`ADMIN_PASSWORD` 可覆盖，否则打印一次随机密码）。打开 `http://localhost:3000` 即用。
-
-> 数据库部署细节见 [docs/部署指南.md](docs/部署指南.md) 与 [docs/开发指南.md](docs/开发指南.md) 第一节。
+完整操作说明见 [docs/使用手册.md](docs/使用手册.md)，功能截图见 [docs/功能导览.md](docs/功能导览.md)。
 
 ## 文档索引
 
 | 文档 | 面向 | 内容 |
 |------|------|------|
 | [docs/使用手册.md](docs/使用手册.md) | 使用者 | 注册登录 → 真题练习 → 六阶段解析 → 错题/生词/AI 生题/作文/统计 → 设置与常见问题 |
+| [docs/功能导览.md](docs/功能导览.md) | 所有人 | **每个功能的顺序截图**（APK 实测，图文版上手导览） |
 | [docs/API 概览.md](docs/API 概览.md) | 开发者/集成 | 全部 tRPC 端点（公开 14 / 私有 98 / 管理 15）+ zod 边界表 + 越权与隔离 |
 | [docs/架构说明.md](docs/架构说明.md) | 开发者 | 请求链路/数据库/流水线/渠道中台/安全设计 |
 | [docs/开发指南.md](docs/开发指南.md) | 开发者 | 环境搭建、构建迁移、编码方法论（PonyTAIL）、提交规范、版本回退 |
