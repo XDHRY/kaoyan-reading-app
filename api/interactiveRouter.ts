@@ -124,7 +124,7 @@ export const interactiveRouter = createRouter({
         myQType: z.string().max(32).default(""),
         myParaNo: z.number().nullable().default(null),
         myAnswer: z.enum(["A", "B", "C", "D"]),
-        myReflection: z.string().max(500).default(""),
+        myReflection: z.string().trim().max(500).default(""),
         score: z.object({ question: z.boolean(), locate: z.boolean(), solve: z.boolean() }),
       }),
     )
