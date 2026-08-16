@@ -16,6 +16,7 @@
 - **EXE 密钥机制重构**：`desktop/main.js` 新增 `resolveEnvVar()`，从 asar 根 `.env` 读取 `MMKG_API_KEY` 注入子进程；`.env` 已从 electron-builder `files` 排除，公共版不含密钥、私有版本地注入。版本号对齐 5.11.0 → 5.12.4（ProductVersion / versionCode=51204）。
 - **安全审计**：GitHub 全部 Release 资产与 git 历史（两仓库全分支）逐层解包筛查，无真实密钥残留；v5.12.3 遗留的旧 5.11.0 EXE 资产已从 Release 移除。
 - **隐私声明**：README 新增「交付物与隐私」章节——公共版密钥自填、私有版仅本地、数据留存本地。
+- **APK 生图显示修复**：AI 生成图（联想图/生词配图）在 Android WebView 上「生成成功但显示空白」。新增 `src/lib/imageBlob.ts`（`dataUrlToBlobUrl`），把超大 base64 data URL 转为 Blob URL 渲染，规避 Chromium 对长 data URL 的解码限制；应用到联想图、生词配图、反馈/工单/管理端截图共 5 处显示点。同步重建四端产物。
 
 ---
 
