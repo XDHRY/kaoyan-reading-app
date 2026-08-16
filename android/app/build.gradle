@@ -8,8 +8,8 @@ android {
         applicationId "com.xdhry.kaoyanreading"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 51204
-        versionName "5.12.4"
+        versionCode 51205
+        versionName "5.12.5"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
