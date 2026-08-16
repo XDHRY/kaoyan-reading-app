@@ -102,7 +102,7 @@ export const adminRouter = createRouter({
     .input(
       z.object({
         id: z.number(),
-        name: z.string().min(1).max(32).optional(),
+        name: z.string().trim().min(1).max(32).optional(),
         avatarChar: z.string().max(4).optional(),
         role: z.enum(["user", "admin"]).optional(),
       }),
@@ -143,7 +143,7 @@ export const adminRouter = createRouter({
 
   /** 重设任意用户密保 */
   resetUserRecovery: adminQuery
-    .input(z.object({ id: z.number(), question: z.string().min(2).max(128), answer: z.string().min(1).max(64) }))
+    .input(z.object({ id: z.number(), question: z.string().trim().min(2).max(128), answer: z.string().trim().min(1).max(64) }))
     .mutation(async ({ input }) => {
       const db = getDb();
       const u = await db.query.users.findFirst({ where: eq(users.id, input.id) });
@@ -209,7 +209,7 @@ export const adminRouter = createRouter({
     return Object.fromEntries(rows.map((r) => [r.k, r.v]));
   }),
   setSetting: adminQuery
-    .input(z.object({ k: z.string().min(1).max(64), v: z.string().max(2000) }))
+    .input(z.object({ k: z.string().trim().min(1).max(64), v: z.string().max(2000) }))
     .mutation(async ({ input }) => {
       const db = getDb();
       // 兼容 MySQL/SQLite：先查后改，避免 onDuplicateKeyUpdate（仅 MySQL 方言）
@@ -224,7 +224,7 @@ export const adminRouter = createRouter({
 
   /** 方法条款管理：更新内容 */
   updateClause: adminQuery
-    .input(z.object({ clauseId: z.string(), title: z.string().min(1).max(64), content: z.string().min(1) }))
+    .input(z.object({ clauseId: z.string(), title: z.string().trim().min(1).max(64), content: z.string().trim().min(1) }))
     .mutation(async ({ input }) => {
       const db = getDb();
       await db
