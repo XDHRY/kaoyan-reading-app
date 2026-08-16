@@ -11,6 +11,12 @@
 - **离线测试回归**：caller 32 + db 17 + browser 7 = 56 PASS；live 真实 API 连续多轮 22 PASS / 0 FAIL（五段解析/作文工坊/生词配图/诊断书/渠道全链路）
 - **四端交付物**：公共/私有 × APK/EXE（公共版零内嵌密钥，私有版仅本地分发，与 v5.12.4 机制一致）
 
+### v5.12.5 后续（2026-08-16 同日）
+
+- **仓库转公有**：README 中英双份加徽章（CI/License/Release/PRs）+ 4 张模拟器界面截图（docs/screenshots/）+ 版本同步 + CODE_OF_CONDUCT；commit `28c91de` 后经 Settings 转 **PUBLIC**
+- **安全清理（GitHub 密钥告警处置）**：`verifier/` 测试脚本与 `docs/测试指南.md` 曾硬编码默认口令（`KyAdmin#****`、`Test#****`）与假 key（`sk-***testkey***`）触发 GitHub Secret Scanning 告警；全部替换为 `CHANGE_ME_*`/`FAKE_KEY_*` 占位符，并用 `git filter-repo --replace-text` 重写全部 git 历史 + force push（`592f524`），告警列表已清空。**真实密钥（MMKG key/keystore 密码）从未入库**，无需轮换；生产代码本就用随机密码（`api/lib/bootstrap.ts`）。
+- 截图修正：README 首页图原误用空白加载页，已替换为真实首页（`5412a0f`）
+
 ---
 
 # 更新日志（CHANGELOG）
