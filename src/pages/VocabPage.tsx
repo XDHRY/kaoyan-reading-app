@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { useUser } from "@/hooks/useUser";
+import { dataUrlToBlobUrl } from "@/lib/imageBlob";
 import { BrushTitle, InkReveal, PaperCard } from "@/components/ink/decor";
 import { Seal } from "@/components/ink/Seal";
 
@@ -77,7 +78,7 @@ export default function VocabPage() {
             <PaperCard key={v.id} className="cursor-pointer select-none" onClick={() => setFlipped((m) => ({ ...m, [v.id]: !isFlip }))}>
               {!isFlip ? (
                 <div className="min-h-[120px] flex flex-col">
-                  {img && <img src={img} alt={v.word} className="w-full h-[110px] object-cover border border-[var(--line)] rounded-[2px] mb-3" />}
+                  {img && <img src={dataUrlToBlobUrl(img)} alt={v.word} className="w-full h-[110px] object-cover border border-[var(--line)] rounded-[2px] mb-3" />}
                   <div className="font-['Georgia'] text-[26px] font-bold tracking-wide">{v.word}</div>
                   <div className="meta-label mt-2 text-[var(--ink-3)]">点击翻面看释义</div>
                   <div className="flex-1" />
@@ -85,7 +86,7 @@ export default function VocabPage() {
                 </div>
               ) : (
                 <div className="min-h-[120px] flex flex-col">
-                  {img && <img src={img} alt={v.word} className="w-full h-[120px] object-cover border border-[var(--line)] rounded-[2px] mb-3" />}
+                  {img && <img src={dataUrlToBlobUrl(img)} alt={v.word} className="w-full h-[120px] object-cover border border-[var(--line)] rounded-[2px] mb-3" />}
                   <div className="text-[16px] font-bold text-[var(--vermilion)]">{v.zh || "（暂无释义）"}</div>
                   {v.context && (
                     <p className="text-[13px] text-[var(--ink-3)] mt-2 line-clamp-3 leading-relaxed">{v.context}</p>

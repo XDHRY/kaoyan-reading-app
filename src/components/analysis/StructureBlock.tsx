@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
+import { dataUrlToBlobUrl } from "@/lib/imageBlob";
 import { StructureDiagram } from "./StructureDiagram";
 
 interface Props {
@@ -46,7 +47,7 @@ function AssocImage({ kind, refId, type, title, purpose }: { kind: "exam" | "gen
       )}
       {st.image && (
         <div className="mt-3">
-          <img src={st.image} alt={title} className="w-full max-w-[560px] border border-[var(--line)] rounded-[2px]" />
+          <img src={dataUrlToBlobUrl(st.image)} alt={title} className="w-full max-w-[560px] border border-[var(--line)] rounded-[2px]" />
           {st.captionZh && <p className="text-[13px] text-[var(--ink-2)] mt-2 leading-relaxed"><b>图读法：</b>{st.captionZh}</p>}
           {type === "vocab" && (st.links ?? []).length > 0 && (
             <div className="mt-2 space-y-1">
