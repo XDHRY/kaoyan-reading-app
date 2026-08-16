@@ -6,6 +6,29 @@
 
 ---
 
+## v5.12.4 — 2026-08-16（公私有版密钥分离 · 隐私安全）
+
+对应发布：`考研阅读助手 v5.12.4 —— 公私有版密钥分离 · 隐私安全`
+
+- **四端交付物拆分**：同一版本同时产出 公共/私有 × APK/EXE 四类构建物——
+  - 公共 APK / 公共 EXE（便携 + 安装版）：**不内嵌任何作者 API 密钥**，由使用者自行在「设置 → API」中填写（渠道/模型/密钥全图形化配置）。
+  - 私有 APK / 私有 EXE：仅本地分发，内嵌作者渠道（APK 经 `OFFLINE_EMBED_KEYS=1` 构建；EXE 经 `desktop/.env` 注入），**永不发布到 GitHub**。
+- **EXE 密钥机制重构**：`desktop/main.js` 新增 `resolveEnvVar()`，从 asar 根 `.env` 读取 `MMKG_API_KEY` 注入子进程；`.env` 已从 electron-builder `files` 排除，公共版不含密钥、私有版本地注入。版本号对齐 5.11.0 → 5.12.4（ProductVersion / versionCode=51204）。
+- **安全审计**：GitHub 全部 Release 资产与 git 历史（两仓库全分支）逐层解包筛查，无真实密钥残留；v5.12.3 遗留的旧 5.11.0 EXE 资产已从 Release 移除。
+- **隐私声明**：README 新增「交付物与隐私」章节——公共版密钥自填、私有版仅本地、数据留存本地。
+
+---
+
+## v5.12.3 — 2026-08-15（离线 APK 修复版 + Windows 桌面版）
+
+对应发布：`考研阅读助手 v5.12.3 —— 离线 APK 修复版 + Windows 桌面版`
+
+- **离线 APK 修复版**：修复离线判分链路（sql.js 后端稳定性），公共版 APK 重新发布；误上传的私有 APK（内嵌密钥）已从 Release 撤回。
+- **Windows 桌面版发布**：Electron 便携版 + Setup 安装版，桌面端功能与 APK 对齐（仪表盘 / SOP 图谱 / 真题库 / 错题本 / 顿悟室 / 生词本 / 作文工坊 / 统计 / 档案 / AI 出题）。
+- **文档体系**：README 中英双语互链，补齐 LICENSE（MIT）/ SECURITY / CONTRIBUTING / issue / PR 模板；CI 增加 `workflow_dispatch` 手动触发。
+
+---
+
 ## v5.12.2 — 2026-08-14（移动端 APK 独立使用 · 云部署一键化）
 
 对应发布：`发布 v5.12.2——离线 APK：后端整体内置，无需服务器`
