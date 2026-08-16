@@ -4,10 +4,28 @@
 
 A full-stack app that helps Chinese postgraduate entrance-exam (考研) candidates practice **traditional English reading comprehension** with the "SOP Six-Stage Method": official-answer-first grading, a six-stage solving pipeline, a mistake-tracking loop, AI-generated passages, and an essay workshop. Ink-wash classical UI, single-process one-command deployment.
 
-- Version: v5.12.2 (see [CHANGELOG.md](CHANGELOG.md))
+<div align="center">
+
+[![CI](https://github.com/XDHRY/kaoyan-reading-app/actions/workflows/ci.yml/badge.svg)](https://github.com/XDHRY/kaoyan-reading-app/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/XDHRY/kaoyan-reading-app)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/XDHRY/kaoyan-reading-app)](https://github.com/XDHRY/kaoyan-reading-app/releases)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+</div>
+
+- Version: v5.12.5 (see [CHANGELOG.md](CHANGELOG.md))
 - Stack: React 19 + Vite + Tailwind (frontend) · Hono + tRPC 11 + Drizzle ORM + MySQL/TiDB (backend)
+- Delivery: Full-stack web service · Offline Android APK · Windows desktop (Electron)
 
 > Note: the in-depth docs under `docs/` are written in Chinese. English coverage here focuses on the README level; translate-on-demand is welcome via issues/PRs.
+
+## Screenshots
+
+| Launch · ink-wash UI | Passage reading | Essay workshop | AI generation |
+|---|---|---|---|
+| ![launch](docs/screenshots/launch.png) | ![passage](docs/screenshots/passage.png) | ![essay](docs/screenshots/essay.png) | ![proposition](docs/screenshots/proposition.png) |
+
+> Captured on the Android emulator (v5.12.x acceptance runs).
 
 ## Feature Overview
 

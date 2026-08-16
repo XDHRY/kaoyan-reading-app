@@ -2,8 +2,27 @@
 
 帮助考研学生用「SOP 六阶段解题法」练习传统阅读的全栈应用：官方答案优先判分、六阶段解题流水线、错题闭环、AI 生题与作文工坊。水墨古风界面，单进程一键部署。
 
-- 版本：v5.12.4（见 [CHANGELOG.md](CHANGELOG.md)）
+<div align="center">
+
+[![CI](https://github.com/XDHRY/kaoyan-reading-app/actions/workflows/ci.yml/badge.svg)](https://github.com/XDHRY/kaoyan-reading-app/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/XDHRY/kaoyan-reading-app)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/XDHRY/kaoyan-reading-app)](https://github.com/XDHRY/kaoyan-reading-app/releases)
+[![Languages](https://img.shields.io/github/languages/top/XDHRY/kaoyan-reading-app)](package.json)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+</div>
+
+- 版本：v5.12.5（见 [CHANGELOG.md](CHANGELOG.md)）
 - 技术栈：React 19 + Vite + Tailwind（前端）· Hono + tRPC 11 + Drizzle ORM + MySQL/TiDB（后端）
+- 交付形态：Web 全栈服务 · Android 离线 APK · Windows 桌面版（Electron）
+
+## 界面预览
+
+| 启动页 · 水墨古风 | 真题精读 · 长难句 | 作文工坊 · 逐段进化 | AI 生题 · 定制卷 |
+|---|---|---|---|
+| ![启动页](docs/screenshots/launch.png) | ![真题精读](docs/screenshots/passage.png) | ![作文工坊](docs/screenshots/essay.png) | ![AI 生题](docs/screenshots/proposition.png) |
+
+> 截图来自 Android 模拟器实测（v5.12.x 验收记录）。
 
 ## 交付物与隐私（重要）
 
