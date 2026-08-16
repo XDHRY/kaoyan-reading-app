@@ -819,7 +819,7 @@ export const agentRouter = createRouter({
   generate: privateQuery
     .input(
       z.object({
-        topic: z.string().min(1),
+        topic: z.string().trim().min(1),
         difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
         focusTypes: z.array(z.string()).default([]),
       }),

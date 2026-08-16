@@ -103,7 +103,7 @@ export const essayRouter = createRouter({
         id: z.number().optional(),
         title: z.string().max(128).default(""),
         essayType: essayTypeEnum,
-        prompt: z.string().min(1).max(4000),
+        prompt: z.string().trim().min(1).max(4000),
         content: z.string().max(20000).default(""),
       }),
     )
@@ -212,7 +212,7 @@ export const essayRouter = createRouter({
 
   /** 按人的参考意见进化提纲（仅提纲阶段可用） */
   reviseOutline: privateQuery
-    .input(z.object({ draftId: z.number(), note: z.string().min(1).max(2000) }))
+    .input(z.object({ draftId: z.number(), note: z.string().trim().min(1).max(2000) }))
     .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const uid = ctx.user.id;
@@ -265,7 +265,7 @@ export const essayRouter = createRouter({
 
   /** 按人的参考意见进化某一段（两种模式通用：人给意见 → AI 重写该段） */
   reviseParagraph: privateQuery
-    .input(z.object({ draftId: z.number(), paraNo: z.number(), note: z.string().min(1).max(2000) }))
+    .input(z.object({ draftId: z.number(), paraNo: z.number(), note: z.string().trim().min(1).max(2000) }))
     .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const uid = ctx.user.id;
@@ -292,7 +292,7 @@ export const essayRouter = createRouter({
 
   /** 确认当前段（可替换为用户修改版）→ 推进到下一段 */
   confirmParagraph: privateQuery
-    .input(z.object({ draftId: z.number(), paraNo: z.number(), content: z.string().min(1).max(8000) }))
+    .input(z.object({ draftId: z.number(), paraNo: z.number(), content: z.string().trim().min(1).max(8000) }))
     .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const draft = await assertDraftOwner(input.draftId, ctx.user.id);
@@ -377,8 +377,8 @@ export const essayRouter = createRouter({
       z.object({
         id: z.number().optional(),
         kind: z.enum(["template", "sentence", "note", "model", "vocab"]).default("note"),
-        title: z.string().min(1).max(128),
-        content: z.string().min(1).max(10000),
+        title: z.string().trim().min(1).max(128),
+        content: z.string().trim().min(1).max(10000),
       }),
     )
     .mutation(async ({ ctx, input }) => {
