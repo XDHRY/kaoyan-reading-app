@@ -96,11 +96,11 @@ export const channelRouter = createRouter({
   create: privateQuery
     .input(
       z.object({
-        name: z.string().min(1).max(64),
+        name: z.string().trim().min(1).max(64),
         kind: z.enum(["chat", "image"]),
         protocol: z.enum(["openai", "anthropic"]),
         baseUrl: z.string().url(),
-        apiKey: z.string().min(1),
+        apiKey: z.string().trim().min(1),
         models: z.array(z.string()).default([]),
         reasoningEffort: effortEnum.nullable().optional(),
         config: configSchema.nullable().optional(),
@@ -133,7 +133,7 @@ export const channelRouter = createRouter({
     .input(
       z.object({
         id: z.number(),
-        name: z.string().min(1).max(64).optional(),
+        name: z.string().trim().min(1).max(64).optional(),
         protocol: z.enum(["openai", "anthropic"]).optional(),
         baseUrl: z.string().url().optional(),
         apiKey: z.string().optional(),
@@ -191,7 +191,7 @@ export const channelRouter = createRouter({
 
   /** 手动追加模型名（Anthropic 等无列表接口的协议用） */
   addModel: privateQuery
-    .input(z.object({ id: z.number(), model: z.string().min(1).max(128) }))
+    .input(z.object({ id: z.number(), model: z.string().trim().min(1).max(128) }))
     .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const ch = await db.query.channels.findFirst({ where: eq(channels.id, input.id) });
@@ -275,7 +275,7 @@ export const channelRouter = createRouter({
       z.object({
         role: z.string(),
         channelId: z.number(),
-        model: z.string().min(1),
+        model: z.string().trim().min(1),
         reasoningEffort: effortEnum.nullable().optional(),
         personal: z.boolean().default(false),
       }),
@@ -341,7 +341,7 @@ export const channelRouter = createRouter({
               binding: z
                 .object({
                   channelId: z.number(),
-                  model: z.string().min(1),
+                  model: z.string().trim().min(1),
                   reasoningEffort: effortEnum.nullable().optional(),
                 })
                 .nullable(),

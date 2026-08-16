@@ -69,8 +69,8 @@ export const promptRouter = createRouter({
     .input(
       z.object({
         agentRole: z.string(),
-        name: z.string().min(1),
-        content: z.string().min(1),
+        name: z.string().trim().min(1),
+        content: z.string().trim().min(1),
         personal: z.boolean().default(false),
       }),
     )

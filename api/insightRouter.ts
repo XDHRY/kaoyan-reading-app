@@ -283,7 +283,7 @@ export const insightRouter = createRouter({
         id: z.number().optional(),
         wrongId: z.number().optional(),
         errorType: z.string().max(24).default(""),
-        content: z.string().min(1).max(10000),
+        content: z.string().trim().min(1).max(10000),
         status: z.enum(["attention", "understood"]).default("attention"),
       }),
     )
