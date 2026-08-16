@@ -264,29 +264,42 @@ export async function callImage(
   if (channel.protocol === "anthropic") {
     throw new Error("Anthropic 协议渠道不支持绘图，请选择 OpenAI 协议的绘图渠道");
   }
-  const res = await fetchWithRetry(`${trimBase(channel.baseUrl)}/v1/images/generations`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${channel.apiKey}`,
-      "Content-Type": "application/json",
-      "User-Agent": BROWSER_UA,
-    },
-    body: JSON.stringify({
-      model,
-      prompt,
-      size: opts.size ?? "1024x1024",
-      ...(opts.quality ? { quality: opts.quality } : {}),
-    }),
-  }, channel);
-  const data = (await res.json().catch(() => ({}))) as {
-    error?: { message?: string };
-    data?: { b64_json?: string; url?: string }[];
+  const url = `${trimBase(channel.baseUrl)}/v1/images/generations`;
+  const headers = {
+    Authorization: `Bearer ${channel.apiKey}`,
+    "Content-Type": "application/json",
+    "User-Agent": BROWSER_UA,
   };
-  if (!res.ok) {
-    throw new Error(`绘图调用失败 (${res.status}): ${data?.error?.message ?? JSON.stringify(data).slice(0, 300)}`);
+  const body = JSON.stringify({
+    model,
+    prompt,
+    size: opts.size ?? "1024x1024",
+    ...(opts.quality ? { quality: opts.quality } : {}),
+  });
+  // 中转站/网关偶发 502/503（如 likex.me 反代故障）：3s 后重试一次，并给出可操作提示；
+  // 其余错误（鉴权/风控 4xx 等）直接抛出，不重试。
+  let lastStatus = 0;
+  let lastMsg = "";
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const res = await fetchWithRetry(url, { method: "POST", headers, body }, channel);
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: { message?: string };
+      data?: { b64_json?: string; url?: string }[];
+    };
+    if (res.ok) {
+      const item = data?.data?.[0] ?? {};
+      return { b64: item.b64_json, url: item.url };
+    }
+    lastStatus = res.status;
+    lastMsg = data?.error?.message ?? JSON.stringify(data).slice(0, 300);
+    if (res.status !== 502 && res.status !== 503) break;
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 3000));
   }
-  const item = data?.data?.[0] ?? {};
-  return { b64: item.b64_json, url: item.url };
+  throw new Error(
+    lastStatus === 502 || lastStatus === 503
+      ? "绘图服务暂时不可用（中转站网关 502/503，可能正在维护），请稍后重试"
+      : `绘图调用失败 (${lastStatus}): ${lastMsg}`,
+  );
 }
 
 /** 拉取渠道模型列表 */
