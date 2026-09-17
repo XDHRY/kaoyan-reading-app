@@ -1,7 +1,5 @@
-# 纸上功夫(考研传统阅读助手)——CI 工作流
-# 职责:每次推送/PR 时执行 安装依赖 → 类型检查 → Lint → 构建,保证代码可编译、可通过基础门禁。
-# 说明:LLM 相关验收套件需要真实渠道与测试环境(仓库外 /mnt/agents/tmp_tests/),不在本 CI 内执行;
-#       本地完整验收流程见 verifier/README.md 与 docs/部署指南.md。
+# 纸上功夫(考研传统阅读助手)——GitHub 云端体检
+# 仓库可自给的检查必须在官方 runner 上真实执行；需要真实 LLM 密钥的验收不伪装成 CI 已覆盖。
 
 name: CI
 
@@ -10,23 +8,20 @@ on:
     branches: [master, main]
   pull_request:
     branches: [master, main]
-  workflow_dispatch:  # 支持手动触发（Actions 页 Run workflow）
+  workflow_dispatch:
 
 jobs:
-  build:
-    name: 安装·类型检查·Lint·构建
+  quality:
+    name: Node 22 · 静态门禁 · Web运行冒烟
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [20]
     steps:
       - name: 检出代码
         uses: actions/checkout@v5
 
-      - name: 安装 Node.js ${{ matrix.node-version }}
+      - name: 安装 Node.js 22
         uses: actions/setup-node@v5
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '22.12.0'
           cache: npm
 
       - name: 安装依赖
@@ -38,11 +33,134 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: 构建(前端 + 后端)
+      - name: Vitest 测试清单
+        shell: bash
+        run: |
+          count=$(find api -type f \( -name '*.test.ts' -o -name '*.spec.ts' \) | wc -l | tr -d ' ')
+          echo "Vitest test files: $count"
+          if [ "$count" -eq 0 ]; then
+            echo "::warning::vitest.config.ts 只匹配 api/**/*.test.ts / api/**/*.spec.ts，但仓库当前没有匹配文件；npm test 会以 No test files found 退出 1。"
+          else
+            npm test
+          fi
+
+      - name: 将 JSON 快照归档转换为离线构建流
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/offline-dump"
+          tar -xzf db/dump.tar.gz -C "$RUNNER_TEMP/offline-dump"
+          find "$RUNNER_TEMP/offline-dump" -type f -name 'part_*.json' | sort | head -20
+          node scripts/dump-parts-to-sql-gz.mjs "$RUNNER_TEMP/offline-dump" "$RUNNER_TEMP/offline.sql.gz"
+          test -s "$RUNNER_TEMP/offline.sql.gz"
+
+      - name: 从仓库快照生成离线 SQLite
+        env:
+          OFFLINE_DUMP_PATH: ${{ runner.temp }}/offline.sql.gz
+        run: |
+          node scripts/build-offline-db.mjs
+          test -s public/offline.db
+          ls -lh public/offline.db
+
+      - name: 构建前端 + 后端
         run: npm run build
 
-      - name: 产物冒烟(自举三件套资产就位)
+      - name: 核心产物与真题语料冒烟
         run: |
-          test -f dist/boot.js && echo "dist/boot.js OK"
-          test -f db/final_corpus.json && echo "真题语料 OK"
-          test -f db/migrations/meta/_journal.json && echo "迁移 meta OK"
+          test -f dist/boot.js
+          test -f dist/public/index.html
+          test -s dist/public/offline.db
+          test -f db/final_corpus.json
+          test -f db/migrations/meta/_journal.json
+          node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          const corpus = JSON.parse(fs.readFileSync('db/final_corpus.json', 'utf8'));
+          if (!Array.isArray(corpus) || corpus.length !== 68) {
+            throw new Error(`final_corpus.json 应为 68 篇，实际 ${Array.isArray(corpus) ? corpus.length : typeof corpus}`);
+          }
+          const q = corpus.reduce((n, p) => n + (Array.isArray(p.questions) ? p.questions.length : 0), 0);
+          if (q !== 340) throw new Error(`真题应为 340 题，实际 ${q}`);
+          console.log(`corpus OK: ${corpus.length} passages / ${q} questions`);
+          NODE
+
+      - name: 离线数据库契约测试
+        run: node scripts/test-offline-db.mjs
+
+      - name: 真实 Chromium 应用级冒烟
+        shell: bash
+        run: |
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          if [ -z "$CHROME_PATH" ]; then
+            echo "::error::GitHub runner 未找到 Chrome/Chromium"
+            exit 1
+          fi
+          echo "Chrome: $CHROME_PATH"
+          CHROME_PATH="$CHROME_PATH" node scripts/test-app-level.mjs
+
+      - name: Verifier 覆盖说明
+        run: |
+          echo "::notice::仓库保留 verifier/v1 基线脚本；v5.1 之后部分验收资产按 verifier/README.md 记录曾位于开发环境 /mnt/agents/tmp_tests/，因此不把那些历史数字伪装成当前 GitHub CI 覆盖。"
+          echo "::notice::涉及真实 LLM 的 verifier 用例需要独立的受控测试通道/密钥，不在 PR CI 中调用真实模型。"
+
+      - name: 依赖安全报告（不阻断）
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  android:
+    name: Android · Capacitor Sync · assembleDebug
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v5
+
+      - name: 安装 Node.js 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22.12.0'
+          cache: npm
+
+      - name: 安装 Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 将 JSON 快照归档转换为离线构建流
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/offline-dump"
+          tar -xzf db/dump.tar.gz -C "$RUNNER_TEMP/offline-dump"
+          node scripts/dump-parts-to-sql-gz.mjs "$RUNNER_TEMP/offline-dump" "$RUNNER_TEMP/offline.sql.gz"
+          test -s "$RUNNER_TEMP/offline.sql.gz"
+
+      - name: 生成离线数据库
+        env:
+          OFFLINE_DUMP_PATH: ${{ runner.temp }}/offline.sql.gz
+        run: |
+          node scripts/build-offline-db.mjs
+          test -s public/offline.db
+
+      - name: 构建 Web
+        run: npm run build
+
+      - name: 同步 Capacitor Android
+        run: npx cap sync android
+
+      - name: 构建 Debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: 校验 APK
+        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: 上传 Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kaoyan-reading-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
