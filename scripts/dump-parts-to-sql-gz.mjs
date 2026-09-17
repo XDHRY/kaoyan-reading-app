@@ -39,7 +39,7 @@ function escapeSqlString(value) {
     .replace(/\n/g, "\\n")
     .replace(/\r/g, "\\r")
     .replace(/\t/g, "\\t")
-    .replace(/\b/g, "\\b")
+    .replace(/\x08/g, "\\b")
     .replace(/\x1a/g, "\\Z")
     .replace(/'/g, "\\'");
 }
