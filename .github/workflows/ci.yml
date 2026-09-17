@@ -44,9 +44,18 @@ jobs:
             npm test
           fi
 
+      - name: 将 JSON 快照归档转换为离线构建流
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/offline-dump"
+          tar -xzf db/dump.tar.gz -C "$RUNNER_TEMP/offline-dump"
+          find "$RUNNER_TEMP/offline-dump" -type f -name 'part_*.json' | sort | head -20
+          node scripts/dump-parts-to-sql-gz.mjs "$RUNNER_TEMP/offline-dump" "$RUNNER_TEMP/offline.sql.gz"
+          test -s "$RUNNER_TEMP/offline.sql.gz"
+
       - name: 从仓库快照生成离线 SQLite
         env:
-          OFFLINE_DUMP_PATH: db/dump.tar.gz
+          OFFLINE_DUMP_PATH: ${{ runner.temp }}/offline.sql.gz
         run: |
           node scripts/build-offline-db.mjs
           test -s public/offline.db
@@ -116,11 +125,21 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: 安装依赖并生成离线数据库
-        env:
-          OFFLINE_DUMP_PATH: db/dump.tar.gz
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 将 JSON 快照归档转换为离线构建流
+        shell: bash
         run: |
-          npm ci
+          mkdir -p "$RUNNER_TEMP/offline-dump"
+          tar -xzf db/dump.tar.gz -C "$RUNNER_TEMP/offline-dump"
+          node scripts/dump-parts-to-sql-gz.mjs "$RUNNER_TEMP/offline-dump" "$RUNNER_TEMP/offline.sql.gz"
+          test -s "$RUNNER_TEMP/offline.sql.gz"
+
+      - name: 生成离线数据库
+        env:
+          OFFLINE_DUMP_PATH: ${{ runner.temp }}/offline.sql.gz
+        run: |
           node scripts/build-offline-db.mjs
           test -s public/offline.db
 
