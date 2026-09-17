@@ -1,6 +1,5 @@
 # 纸上功夫(考研传统阅读助手)——GitHub 云端体检
-# 仓库可自给的检查必须在官方 runner 上真实执行；依赖本机 MySQL dump/真实 LLM 密钥的
-# 离线全量验收不伪装成 CI 已覆盖，相关缺口会显式提示。
+# 仓库可自给的检查必须在官方 runner 上真实执行；需要真实 LLM 密钥的验收不伪装成 CI 已覆盖。
 
 name: CI
 
@@ -45,6 +44,14 @@ jobs:
             npm test
           fi
 
+      - name: 从仓库快照生成离线 SQLite
+        env:
+          OFFLINE_DUMP_PATH: db/dump.tar.gz
+        run: |
+          node scripts/build-offline-db.mjs
+          test -s public/offline.db
+          ls -lh public/offline.db
+
       - name: 构建前端 + 后端
         run: npm run build
 
@@ -52,6 +59,7 @@ jobs:
         run: |
           test -f dist/boot.js
           test -f dist/public/index.html
+          test -s dist/public/offline.db
           test -f db/final_corpus.json
           test -f db/migrations/meta/_journal.json
           node --input-type=module - <<'NODE'
@@ -65,6 +73,9 @@ jobs:
           console.log(`corpus OK: ${corpus.length} passages / ${q} questions`);
           NODE
 
+      - name: 离线数据库契约测试
+        run: node scripts/test-offline-db.mjs
+
       - name: 真实 Chromium 应用级冒烟
         shell: bash
         run: |
@@ -76,9 +87,10 @@ jobs:
           echo "Chrome: $CHROME_PATH"
           CHROME_PATH="$CHROME_PATH" node scripts/test-app-level.mjs
 
-      - name: 外部 fixture 测试覆盖说明
+      - name: Verifier 覆盖说明
         run: |
-          echo "::notice::scripts/test-offline-db.mjs / test-offline-caller.mjs 依赖 public/offline.db；该 DB 由未入库的 MySQL dump 构建，因此公共 GitHub runner 不能自给运行。"
+          echo "::notice::仓库保留 verifier/v1 基线脚本；v5.1 之后部分验收资产按 verifier/README.md 记录曾位于开发环境 /mnt/agents/tmp_tests/，因此不把那些历史数字伪装成当前 GitHub CI 覆盖。"
+          echo "::notice::涉及真实 LLM 的 verifier 用例需要独立的受控测试通道/密钥，不在 PR CI 中调用真实模型。"
 
       - name: 依赖安全报告（不阻断）
         continue-on-error: true
@@ -104,10 +116,16 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: 安装依赖并构建 Web
+      - name: 安装依赖并生成离线数据库
+        env:
+          OFFLINE_DUMP_PATH: db/dump.tar.gz
         run: |
           npm ci
-          npm run build
+          node scripts/build-offline-db.mjs
+          test -s public/offline.db
+
+      - name: 构建 Web
+        run: npm run build
 
       - name: 同步 Capacitor Android
         run: npx cap sync android
