@@ -1,0 +1,55 @@
+name: Security Safe Autofix
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  materialize-safe-audit-fix:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'security/npm-audit-safe-fix')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout security branch
+        uses: actions/checkout@v5
+        with:
+          ref: security/npm-audit-safe-fix
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22.12.0'
+          cache: npm
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Apply only non-breaking audit fixes
+        shell: bash
+        run: |
+          set +e
+          npm audit fix
+          audit_rc=$?
+          set -e
+          echo "npm audit fix exit code: $audit_rc (remaining advisories are allowed at this step)"
+          git diff -- package.json package-lock.json || true
+
+      - name: Commit lockfile/package changes if any
+        shell: bash
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "No safe audit changes remain."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          git commit -m 'security: apply non-breaking npm audit fixes'
+          git push origin HEAD:security/npm-audit-safe-fix
