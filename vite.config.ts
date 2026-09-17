@@ -38,7 +38,8 @@ const offlineAliasPlugin: Plugin = {
 
 /**
  * 只拆稳定第三方依赖，不改变页面的同步导入/路由语义。
- * 这样老 Android WebView 仍按原启动路径执行，同时大依赖可以独立缓存。
+ * React 与 Recharts/d3 必须放在同一 chunk：分开会形成
+ * vendor-react -> vendor-charts -> vendor-react 循环，导致浏览器 TDZ 初始化错误。
  */
 function vendorChunk(id: string): string | undefined {
   const p = id.replace(/\\/g, "/");
@@ -48,8 +49,10 @@ function vendorChunk(id: string): string | undefined {
     p.includes("/node_modules/react/") ||
     p.includes("/node_modules/react-dom/") ||
     p.includes("/node_modules/react-router/") ||
-    p.includes("/node_modules/scheduler/")
-  ) return "vendor-react";
+    p.includes("/node_modules/scheduler/") ||
+    p.includes("/node_modules/recharts/") ||
+    p.includes("/node_modules/d3-")
+  ) return "vendor-visual";
 
   if (
     p.includes("/node_modules/@radix-ui/") ||
@@ -62,11 +65,6 @@ function vendorChunk(id: string): string | undefined {
     p.includes("/node_modules/date-fns/") ||
     p.includes("/node_modules/next-themes/")
   ) return "vendor-ui";
-
-  if (
-    p.includes("/node_modules/recharts/") ||
-    p.includes("/node_modules/d3-")
-  ) return "vendor-charts";
 
   if (
     p.includes("/node_modules/sql.js/") ||
