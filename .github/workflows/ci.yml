@@ -1,7 +1,6 @@
 # 纸上功夫(考研传统阅读助手)——CI 工作流
-# 职责:每次推送/PR 时执行 安装依赖 → 类型检查 → Lint → 构建,保证代码可编译、可通过基础门禁。
-# 说明:LLM 相关验收套件需要真实渠道与测试环境(仓库外 /mnt/agents/tmp_tests/),不在本 CI 内执行;
-#       本地完整验收流程见 verifier/README.md 与 docs/部署指南.md。
+# 每次推送/PR 时执行安装、类型检查、Lint、单元测试、构建和产物冒烟。
+# 真实 LLM 渠道验收仍保留在仓库外部环境，不在公共 CI 中调用真实密钥。
 
 name: CI
 
@@ -10,23 +9,20 @@ on:
     branches: [master, main]
   pull_request:
     branches: [master, main]
-  workflow_dispatch:  # 支持手动触发（Actions 页 Run workflow）
+  workflow_dispatch:
 
 jobs:
   build:
-    name: 安装·类型检查·Lint·构建
+    name: Node 22 · 类型检查 · Lint · Test · Build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [20]
     steps:
       - name: 检出代码
         uses: actions/checkout@v5
 
-      - name: 安装 Node.js ${{ matrix.node-version }}
+      - name: 安装 Node.js 22
         uses: actions/setup-node@v5
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '22.12.0'
           cache: npm
 
       - name: 安装依赖
@@ -38,11 +34,18 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: 单元测试(Vitest)
+        run: npm test
+
       - name: 构建(前端 + 后端)
         run: npm run build
 
-      - name: 产物冒烟(自举三件套资产就位)
+      - name: 产物冒烟
         run: |
           test -f dist/boot.js && echo "dist/boot.js OK"
           test -f db/final_corpus.json && echo "真题语料 OK"
           test -f db/migrations/meta/_journal.json && echo "迁移 meta OK"
+
+      - name: 依赖安全报告（不阻断）
+        continue-on-error: true
+        run: npm audit --audit-level=high
