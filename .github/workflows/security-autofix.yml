@@ -28,6 +28,11 @@ jobs:
           node-version: '22.12.0'
           cache: npm
 
+      - name: Upgrade npm within current major-compatible Node toolchain
+        run: |
+          npm install --global npm@11
+          npm --version
+
       - name: Install exact dependencies
         run: npm ci
 
