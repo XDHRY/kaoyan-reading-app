@@ -33,16 +33,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Vitest 测试清单
-        shell: bash
-        run: |
-          count=$(find api -type f \( -name '*.test.ts' -o -name '*.spec.ts' \) | wc -l | tr -d ' ')
-          echo "Vitest test files: $count"
-          if [ "$count" -eq 0 ]; then
-            echo "::warning::vitest.config.ts 只匹配 api/**/*.test.ts / api/**/*.spec.ts，但仓库当前没有匹配文件；npm test 会以 No test files found 退出 1。"
-          else
-            npm test
-          fi
+      - name: Vitest API 单元测试（0 tests = fail）
+        run: npm test
 
       - name: 将 JSON 快照归档转换为离线构建流
         shell: bash
