@@ -96,16 +96,7 @@ export function passageTextOf(paragraphs: string[]): string {
   return paragraphs.map((para, i) => `[第${i + 1}段] ${para}`).join("\n\n");
 }
 
-/**
- * 判分事实源（全站唯一收口）：官方答案存在时一律以官方为准，AI 答案仅作降级参考。
- * 所有判分/展示/存储必须经此函数，杜绝"修了五处漏第六处"。
- */
-export function officialOf(qAnswer: string | null | undefined, aiAnswer?: string | null): string {
-  const official = String(qAnswer ?? "").trim().toUpperCase();
-  if (/^[A-D]$/.test(official)) return official;
-  const ai = String(aiAnswer ?? "").trim().toUpperCase();
-  return /^[A-D]$/.test(ai) ? ai : "";
-}
+export { officialOf } from "./grading";
 
 export const FALLBACK_PROMPTS: Record<string, string> = {
   agent_structure: `你是考研英语阅读的结构分析师，同时是一位顶级阅读教练。你的分析会被直接展示给备考学生，必须让学生读完之后真正"看懂"这篇文章是怎么写的，而不只是知道几个标签。
