@@ -5,59 +5,13 @@ import type { TrpcContext } from "./context";
 import { getDb } from "./queries/connection";
 import { channels, bindings, type Channel, type ChannelConfig } from "@db/schema";
 import { callChat, callImage, listModels, testChannel, filterModelsByKind } from "./llm/client";
+import { assertSafeBaseUrl, maskApiKey } from "./lib/channelPolicy";
 
-/** key 脱敏：只回前端掩码 */
-function mask(key: string): string {
-  if (key.length <= 8) return "****";
-  return `${key.slice(0, 3)}****${key.slice(-4)}`;
-}
-
-function toSafe<T extends { apiKey: string }>(c: T) {
-  return { ...c, apiKey: mask(c.apiKey) };
+function toSafe<T extends { apiKey: string }>(ch: T) {
+  return { ...ch, apiKey: maskApiKey(ch.apiKey) };
 }
 
 const isAdmin = (ctx: TrpcContext) => ctx.user?.role === "admin";
-
-/** SSRF 防护：渠道地址必须 https，且不得指向内网/回环地址 */
-function assertSafeBaseUrl(url: string) {
-  let u: URL;
-  try {
-    u = new URL(url);
-  } catch {
-    throw new Error("渠道地址不是合法 URL");
-  }
-  if (u.protocol !== "https:") throw new Error("渠道地址必须使用 https（防明文泄钥）");
-  // 去掉 IPv6 方括号与 FQDN 尾点，防止 [::1]/[::ffff:127.0.0.1]/localhost. 等形态绕过
-  const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
-  if (!h) throw new Error("渠道地址缺少主机名");
-  const isInternalIpv4 = (v4: string) =>
-    /^(127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(v4) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(v4);
-  const block = () => {
-    throw new Error("渠道地址不允许指向内网或回环地址");
-  };
-  if (h.includes(":")) {
-    // IPv6：回环 / 链路本地(fe80::/10)直接拦截
-    if (h === "::1" || /^fe[89ab]/.test(h)) block();
-    // IPv4 映射段(::ffff:127.0.0.1 或规范化为 hex 的 ::ffff:7f00:1)取出内嵌 IPv4 再判
-    const mapped = h.match(/^::ffff:(.+)$/);
-    if (mapped) {
-      let v4: string | null = null;
-      const tail = mapped[1];
-      if (/^\d+\.\d+\.\d+\.\d+$/.test(tail)) {
-        v4 = tail;
-      } else {
-        const hex = tail.split(":").map((p) => p.padStart(4, "0")).join("");
-        if (/^[0-9a-f]{8}$/.test(hex)) {
-          v4 = [0, 2, 4, 6].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(".");
-        }
-      }
-      if (v4 && isInternalIpv4(v4)) block();
-    }
-    return;
-  }
-  if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal") || isInternalIpv4(h)) block();
-}
 
 /** 渠道管理权限：管理员可管一切；普通用户只能管自己的个人渠道 */
 function canManageChannel(ctx: TrpcContext, ch: Channel): boolean {
