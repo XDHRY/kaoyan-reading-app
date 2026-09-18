@@ -36,6 +36,53 @@ const offlineAliasPlugin: Plugin = {
   },
 };
 
+/**
+ * 只拆稳定第三方依赖，不改变页面的同步导入/路由语义。
+ * React 与 Recharts/d3 必须放在同一 chunk：分开会形成
+ * vendor-react -> vendor-charts -> vendor-react 循环，导致浏览器 TDZ 初始化错误。
+ */
+function vendorChunk(id: string): string | undefined {
+  const p = id.replace(/\\/g, "/");
+  if (!p.includes("/node_modules/")) return undefined;
+
+  if (
+    p.includes("/node_modules/react/") ||
+    p.includes("/node_modules/react-dom/") ||
+    p.includes("/node_modules/react-router/") ||
+    p.includes("/node_modules/scheduler/") ||
+    p.includes("/node_modules/recharts/") ||
+    p.includes("/node_modules/d3-")
+  ) return "vendor-visual";
+
+  if (
+    p.includes("/node_modules/@radix-ui/") ||
+    p.includes("/node_modules/lucide-react/") ||
+    p.includes("/node_modules/cmdk/") ||
+    p.includes("/node_modules/sonner/") ||
+    p.includes("/node_modules/vaul/") ||
+    p.includes("/node_modules/embla-carousel-react/") ||
+    p.includes("/node_modules/react-day-picker/") ||
+    p.includes("/node_modules/date-fns/") ||
+    p.includes("/node_modules/next-themes/")
+  ) return "vendor-ui";
+
+  if (
+    p.includes("/node_modules/sql.js/") ||
+    p.includes("/node_modules/drizzle-orm/")
+  ) return "vendor-db";
+
+  if (
+    p.includes("/node_modules/@tanstack/") ||
+    p.includes("/node_modules/@trpc/") ||
+    p.includes("/node_modules/superjson/") ||
+    p.includes("/node_modules/zod/") ||
+    p.includes("/node_modules/react-hook-form/") ||
+    p.includes("/node_modules/@hookform/")
+  ) return "vendor-data";
+
+  return undefined;
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -75,5 +122,10 @@ export default defineConfig({
     // minSdk 26 老设备 WebView（≈Chrome 62）兼容：显式降至 es2020，避免 vite 7 默认
     // baseline-widely-available（≈Chrome 107+）产出 ??= 等 es2021+ 语法导致整包 SyntaxError
     target: "es2020",
+    rollupOptions: {
+      output: {
+        manualChunks: vendorChunk,
+      },
+    },
   },
 });
