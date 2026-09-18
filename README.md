@@ -168,6 +168,7 @@ NODE_ENV=production node dist/boot.js   # 单进程：静态站点 + tRPC + 自�
 | [docs/开发指南.md](docs/开发指南.md) | 开发者 | 环境搭建、构建迁移、编码方法论（PonyTAIL）、提交规范、版本回退 |
 | [docs/测试指南.md](docs/测试指南.md) | 开发者 | 套件清单、运行命令、覆盖矩阵、新增断言规范、限流踩坑 |
 | [docs/部署指南.md](docs/部署指南.md) | 运维 | 生产部署（Docker/进程/时区/环境变量） |
+| [docs/STATUS.md](docs/STATUS.md) | 开发者 | **项目现状、已知缺陷与下一步路线图（先看这个）** |
 | [AGENTS.md](AGENTS.md) | AI/新人 | 项目约定速查（红线/目录/方法论） |
 | [CHANGELOG.md](CHANGELOG.md) | 所有人 | 版本历史（每版对应 `verifier/runs/` 验收记录） |
 
