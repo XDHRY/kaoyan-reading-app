@@ -88,7 +88,7 @@ async function fetchOnce(url: string, init: RequestInit, timeoutMs: number): Pro
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    // SSRF：初始渠道 URL 已校验；禁止自动跟随 30x 到内网/回环地址。\n    return await fetch(url, { ...init, redirect: "error", signal: controller.signal });
   } finally {
     clearTimeout(timer);
   }
