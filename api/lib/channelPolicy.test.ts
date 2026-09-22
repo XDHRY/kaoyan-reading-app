@@ -22,6 +22,12 @@ describe("assertSafeBaseUrl", () => {
     expect(() => assertSafeBaseUrl("http://api.example.com/v1")).toThrow("渠道地址必须使用 https");
   });
 
+  it("rejects embedded URL credentials", () => {
+    expect(() => assertSafeBaseUrl("https://user:secret@api.example.com/v1")).toThrow(
+      "渠道地址不允许包含用户名或密码",
+    );
+  });
+
   it.each([
     "https://localhost/v1",
     "https://localhost./v1",
@@ -40,6 +46,8 @@ describe("assertSafeBaseUrl", () => {
     "https://192.168.1.1/v1",
     "https://169.254.169.254/latest/meta-data",
     "https://0.0.0.0/v1",
+    "https://2130706433/v1",
+    "https://0x7f000001/v1",
   ])("rejects private/link-local IPv4 endpoints: %s", (url) => {
     expect(() => assertSafeBaseUrl(url)).toThrow("渠道地址不允许指向内网或回环地址");
   });
@@ -52,6 +60,8 @@ describe("assertSafeBaseUrl", () => {
     "https://[fd12:3456::1]/v1",
     "https://[::ffff:127.0.0.1]/v1",
     "https://[::ffff:7f00:1]/v1",
+    "https://[::ffff:a00:1]/v1",
+    "https://[::ffff:c0a8:101]/v1",
   ])("rejects local/private IPv6 endpoints: %s", (url) => {
     expect(() => assertSafeBaseUrl(url)).toThrow("渠道地址不允许指向内网或回环地址");
   });
