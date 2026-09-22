@@ -41,6 +41,7 @@ export function assertSafeBaseUrl(url: string): void {
     throw new Error("渠道地址不是合法 URL");
   }
   if (u.protocol !== "https:") throw new Error("渠道地址必须使用 https（防明文泄钥）");
+  if (u.username || u.password) throw new Error("渠道地址不允许包含用户名或密码");
 
   const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
   if (!h) throw new Error("渠道地址缺少主机名");
