@@ -66,6 +66,8 @@ async function nativeFetchOnce(url: string, init: RequestInit, timeoutMs: number
     headers: (init.headers as Record<string, string> | undefined) ?? {},
     connectTimeout: timeoutMs,
     readTimeout: timeoutMs,
+    // SSRF：禁止原生网络层自动跟随到未重新校验的目标。
+    disableRedirects: true,
   };
   if (init.body != null) {
     opts.data = typeof init.body === "string" ? init.body : JSON.stringify(init.body);
@@ -88,7 +90,8 @@ async function fetchOnce(url: string, init: RequestInit, timeoutMs: number): Pro
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    // SSRF：初始渠道 URL 已校验；禁止自动跟随 30x 到内网/回环地址。\n    return await fetch(url, { ...init, redirect: "error", signal: controller.signal });
+    // SSRF：初始渠道 URL 已校验；禁止自动跟随 30x 到内网/回环地址。
+    return await fetch(url, { ...init, redirect: "error", signal: controller.signal });
   } finally {
     clearTimeout(timer);
   }
